@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Modal,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
@@ -29,6 +29,7 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
   } = useFinance();
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [budgetDetail, setBudgetDetail] = useState<{ id: string; name: string; color: string } | null>(null);
   const calendarDays = useMemo(() => generateLast14Days(), []);
 
   const categoryExpenses = useMemo(() => {
@@ -114,7 +115,23 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
     return `${r.dueDate} ${SHAMSI_MONTH_NAMES[r.dueMonth! - 1]} ${r.dueYear}`;
   };
 
+  const budgetTransactions = useMemo(() => {
+    if (!budgetDetail) return [];
+    const now = new Date();
+    const isParent = PARENT_CATEGORIES.some(p => p.id === budgetDetail.id);
+    return transactions.filter(tx => {
+      const d = new Date(tx.date);
+      if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return false;
+      if (isParent) {
+        const cat = categories.find(c => c.id === tx.categoryId);
+        return cat?.parentCategoryId === budgetDetail.id;
+      }
+      return tx.categoryId === budgetDetail.id;
+    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [budgetDetail, transactions, categories]);
+
   return (
+    <>
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <View>
@@ -228,31 +245,37 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
             <Text style={styles.budgetSummaryTitle}>بودجه ماه جاری</Text>
           </View>
           {budgetItems.map(item => (
-            <View key={item.id} style={styles.budgetSummaryItem}>
-              <View style={styles.budgetSummaryRow}>
-                <Text style={styles.budgetSummaryName} numberOfLines={1}>{item.name}</Text>
-                <Text style={[styles.budgetSummaryPct, item.percentage >= 100 && { color: '#ef4444' }]}>
-                  {item.percentage.toFixed(0)}%
-                </Text>
+            <TouchableOpacity key={item.id} activeOpacity={0.7}
+              onPress={() => setBudgetDetail({ id: item.id, name: item.name, color: item.color })}>
+              <View style={styles.budgetSummaryItem}>
+                <View style={styles.budgetSummaryRow}>
+                  <Text style={styles.budgetSummaryName} numberOfLines={1}>{item.name}</Text>
+                  <View style={styles.budgetSummaryRight}>
+                    <Text style={[styles.budgetSummaryPct, item.percentage >= 100 && { color: '#ef4444' }]}>
+                      {item.percentage.toFixed(0)}%
+                    </Text>
+                    <Feather name="chevron-left" size={16} color="#d1d5db" />
+                  </View>
+                </View>
+                <View style={styles.budgetSummaryBarBg}>
+                  <View style={[styles.budgetSummaryBarFill, {
+                    width: `${Math.min(item.percentage, 100)}%`,
+                    backgroundColor: item.percentage >= 100 ? '#ef4444' : item.percentage >= 80 ? '#f97316' : '#10b981',
+                  }]} />
+                </View>
+                <View style={styles.budgetSummaryStats}>
+                  <Text style={styles.budgetSummaryStat}>
+                    هزینه: {formatCurrency(item.spent, true)}
+                  </Text>
+                  <Text style={styles.budgetSummaryStat}>
+                    باقی‌مانده: {item.limit > item.spent ? formatCurrency(item.limit - item.spent, true) : '0'}
+                  </Text>
+                  <Text style={styles.budgetSummaryStat}>
+                    سقف: {formatCurrency(item.limit, true)}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.budgetSummaryBarBg}>
-                <View style={[styles.budgetSummaryBarFill, {
-                  width: `${Math.min(item.percentage, 100)}%`,
-                  backgroundColor: item.percentage >= 100 ? '#ef4444' : item.percentage >= 80 ? '#f97316' : '#10b981',
-                }]} />
-              </View>
-              <View style={styles.budgetSummaryStats}>
-                <Text style={styles.budgetSummaryStat}>
-                  هزینه: {formatCurrency(item.spent, true)}
-                </Text>
-                <Text style={styles.budgetSummaryStat}>
-                  باقی‌مانده: {item.limit > item.spent ? formatCurrency(item.limit - item.spent, true) : '0'}
-                </Text>
-                <Text style={styles.budgetSummaryStat}>
-                  سقف: {formatCurrency(item.limit, true)}
-                </Text>
-              </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       )}
@@ -306,6 +329,54 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
         )}
       </View>
     </ScrollView>
+
+      <Modal visible={!!budgetDetail} transparent animationType="slide">
+        <View style={styles.bdOverlay}>
+          <View style={styles.bdContainer}>
+            <View style={styles.bdHeader}>
+              <View style={styles.bdHeaderLeft}>
+                <TouchableOpacity onPress={() => setBudgetDetail(null)} style={styles.bdBack}>
+                  <Feather name="arrow-right" size={22} color="#6b7280" />
+                </TouchableOpacity>
+                <View>
+                  <Text style={styles.bdTitle}>{budgetDetail?.name}</Text>
+                  <Text style={styles.bdSubtitle}>تراکنش‌های ماه جاری</Text>
+                </View>
+              </View>
+              <Text style={styles.bdCount}>{budgetTransactions.length} تراکنش</Text>
+            </View>
+
+            <ScrollView style={styles.bdList} contentContainerStyle={styles.bdListContent} showsVerticalScrollIndicator={false}>
+              {budgetTransactions.length === 0 ? (
+                <View style={styles.bdEmpty}>
+                  <Feather name="file-text" size={32} color="#d1d5db" />
+                  <Text style={styles.bdEmptyText}>تراکنشی در این بودجه ثبت نشده</Text>
+                </View>
+              ) : (
+                budgetTransactions.map(tx => {
+                  const cat = categories.find(c => c.id === tx.categoryId);
+                  const iconName = (cat?.icon && iconMap[cat.icon]) ? iconMap[cat.icon] : 'credit-card';
+                  return (
+                    <View key={tx.id} style={styles.bdTxCard}>
+                      <View style={[styles.bdTxIcon, { backgroundColor: cat?.color ? `${cat.color}26` : '#f3f4f6' }]}>
+                        <Feather name={iconName} size={20} color={cat?.color || '#6b7280'} />
+                      </View>
+                      <View style={styles.bdTxInfo}>
+                        <Text style={styles.bdTxName} numberOfLines={1}>{tx.note || cat?.name}</Text>
+                        <Text style={styles.bdTxDate}>{formatDate(tx.date)}</Text>
+                      </View>
+                      <Text style={[styles.bdTxAmount, tx.type === 'income' && { color: '#10b981' }]}>
+                        {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, true)}
+                      </Text>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -339,6 +410,7 @@ const styles = StyleSheet.create({
   budgetSummaryItem: { fontFamily: 'Vazirmatn_400Regular', backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#f3f4f6', shadowColor: '#000', shadowOffset: { width: 0, height: 1}, shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
   budgetSummaryRow: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   budgetSummaryName: { fontSize: 13, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937', flex: 1 },
+  budgetSummaryRight: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', alignItems: 'center', gap: 4 },
   budgetSummaryPct: { fontSize: 12, fontFamily: 'Vazirmatn_700Bold', color: '#6b7280' },
   budgetSummaryBarBg: { fontFamily: 'Vazirmatn_400Regular', height: 8, borderRadius: 4, backgroundColor: '#f3f4f6', overflow: 'hidden', marginBottom: 8 },
   budgetSummaryBarFill: { fontFamily: 'Vazirmatn_400Regular', height: 8, borderRadius: 4 },
@@ -390,4 +462,23 @@ const styles = StyleSheet.create({
   overdueName: { fontSize: 13, fontFamily: 'Vazirmatn_700Bold', color: '#991b1b' },
   overdueMeta: { fontSize: 11, fontFamily: 'Vazirmatn_500Medium', color: '#b91c1c', marginTop: 2 },
   overdueAmount: { fontSize: 12, fontFamily: 'Vazirmatn_700Bold', color: '#991b1b' },
+
+  bdOverlay: { fontFamily: 'Vazirmatn_400Regular', flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
+  bdContainer: { fontFamily: 'Vazirmatn_400Regular', backgroundColor: '#f8fafc', borderTopLeftRadius: 32, borderTopRightRadius: 32, maxHeight: '85%', minHeight: '50%' },
+  bdHeader: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingBottom: 16, backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  bdHeaderLeft: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bdBack: { fontFamily: 'Vazirmatn_400Regular', width: 40, height: 40, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  bdTitle: { fontSize: 16, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937' },
+  bdSubtitle: { fontSize: 11, fontFamily: 'Vazirmatn_500Medium', color: '#9ca3af', marginTop: 2 },
+  bdCount: { fontSize: 12, fontFamily: 'Vazirmatn_600SemiBold', color: '#6b7280', backgroundColor: '#f3f4f6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  bdList: { fontFamily: 'Vazirmatn_400Regular', flex: 1 },
+  bdListContent: { fontFamily: 'Vazirmatn_400Regular', padding: 24, paddingBottom: 40, gap: 12 },
+  bdEmpty: { fontFamily: 'Vazirmatn_400Regular', alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12 },
+  bdEmptyText: { fontSize: 13, fontFamily: 'Vazirmatn_500Medium', color: '#9ca3af' },
+  bdTxCard: { fontFamily: 'Vazirmatn_400Regular', backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#f3f4f6' },
+  bdTxIcon: { fontFamily: 'Vazirmatn_400Regular', width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  bdTxInfo: { fontFamily: 'Vazirmatn_400Regular', flex: 1 },
+  bdTxName: { fontSize: 13, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937' },
+  bdTxDate: { fontSize: 11, fontFamily: 'Vazirmatn_500Medium', color: '#9ca3af', marginTop: 2 },
+  bdTxAmount: { fontSize: 14, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937' },
 });
