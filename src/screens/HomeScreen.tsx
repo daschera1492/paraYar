@@ -4,8 +4,8 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
-import { formatCurrency, formatDate, getPersianDate, isSameDay, generateLast14Days } from '../utils';
-import { PARENT_CATEGORIES } from '../types';
+import { formatCurrency, formatDate, getPersianDate, isSameDay, generateLast14Days, gregorianToShamsi, SHAMSI_MONTH_NAMES } from '../utils';
+import { PARENT_CATEGORIES, Reminder } from '../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CONTENT_PADDING = 24;
@@ -25,6 +25,7 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
   const {
     totalBalance, monthlyIncome, monthlyExpense, transactions, budgets,
     deleteTransaction, setEditingTransactionId, categories, userProfile,
+    reminders,
   } = useFinance();
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -91,6 +92,27 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
 
   const isToday = isSameDay(selectedDate, new Date());
   const selectedDateFull = selectedDate ? getPersianDate(selectedDate).full : '';
+
+  function isReminderDue(r: Reminder): boolean {
+    const now = new Date();
+    const s = gregorianToShamsi(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const todayOrdinal = s.year * 10000 + s.month * 100 + s.day;
+    if (r.type === 'monthly') {
+      const dueOrdinal = s.year * 10000 + s.month * 100 + r.dueDate;
+      return todayOrdinal >= dueOrdinal;
+    } else {
+      if (!r.dueYear || !r.dueMonth) return false;
+      const dueOrdinal = r.dueYear * 10000 + r.dueMonth * 100 + r.dueDate;
+      return todayOrdinal >= dueOrdinal;
+    }
+  }
+
+  const overdueReminders = reminders.filter(r => r.isActive && !r.completed && isReminderDue(r));
+
+  const reminderLabel = (r: Reminder) => {
+    if (r.type === 'monthly') return `روز ${r.dueDate} هر ماه`;
+    return `${r.dueDate} ${SHAMSI_MONTH_NAMES[r.dueMonth! - 1]} ${r.dueYear}`;
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -173,6 +195,29 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
               <Text style={[styles.dailyAmount, { color: '#f43f5e' }]}>{formatCurrency(dailyStats.expense, true)}</Text>
             </View>
           </View>
+        </View>
+      )}
+
+      {overdueReminders.length > 0 && (
+        <View style={styles.overdueSection}>
+          <View style={styles.overdueHeader}>
+            <Feather name="alert-triangle" size={16} color="#ef4444" />
+            <Text style={styles.overdueTitle}>یادآورهای سررسید شده</Text>
+          </View>
+          {overdueReminders.map(r => (
+            <View key={r.id} style={styles.overdueCard}>
+              <View style={styles.overdueIconBox}>
+                <Feather name="bell" size={20} color="#ef4444" />
+              </View>
+              <View style={styles.overdueInfo}>
+                <Text style={styles.overdueName}>{r.title}</Text>
+                <Text style={styles.overdueMeta}>{reminderLabel(r)}</Text>
+              </View>
+              {r.amount ? (
+                <Text style={styles.overdueAmount}>{r.amount.toLocaleString('en-US')} تومان</Text>
+              ) : null}
+            </View>
+          ))}
         </View>
       )}
 
@@ -335,4 +380,14 @@ const styles = StyleSheet.create({
   editBtnText: { fontSize: 11, color: '#2563eb', fontFamily: 'Vazirmatn_500Medium' },
   deleteBtn: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fef2f2', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8},
   deleteBtnText: { fontSize: 11, color: '#ef4444', fontFamily: 'Vazirmatn_500Medium' },
+
+  overdueSection: { fontFamily: 'Vazirmatn_400Regular', marginBottom: 24, gap: 10 },
+  overdueHeader: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  overdueTitle: { fontSize: 14, fontFamily: 'Vazirmatn_700Bold', color: '#ef4444' },
+  overdueCard: { fontFamily: 'Vazirmatn_400Regular', backgroundColor: '#fef2f2', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#fecaca' },
+  overdueIconBox: { fontFamily: 'Vazirmatn_400Regular', width: 40, height: 40, borderRadius: 12, backgroundColor: '#fee2e2', alignItems: 'center', justifyContent: 'center' },
+  overdueInfo: { fontFamily: 'Vazirmatn_400Regular', flex: 1 },
+  overdueName: { fontSize: 13, fontFamily: 'Vazirmatn_700Bold', color: '#991b1b' },
+  overdueMeta: { fontSize: 11, fontFamily: 'Vazirmatn_500Medium', color: '#b91c1c', marginTop: 2 },
+  overdueAmount: { fontSize: 12, fontFamily: 'Vazirmatn_700Bold', color: '#991b1b' },
 });

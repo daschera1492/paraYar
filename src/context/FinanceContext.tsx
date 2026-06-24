@@ -23,6 +23,7 @@ interface FinanceContextType {
   addReminder: (reminder: Omit<Reminder, 'id'>) => void;
   deleteReminder: (id: string) => void;
   toggleReminder: (id: string) => void;
+  completeReminder: (id: string) => void;
   editingTransactionId: string | null;
   setEditingTransactionId: (id: string | null) => void;
   getBackupData: () => BackupData;
@@ -41,7 +42,7 @@ const KEYS = {
 } as const;
 
 const DEFAULT_PROFILE: UserProfile = { name: 'کاربر', phone: '', email: '' };
-const DEFAULT_REMINDER: Reminder = { id: '1', title: 'اجاره خانه', amount: 5000000, dueDate: 1, isActive: true };
+const DEFAULT_REMINDER: Reminder = { id: '1', title: 'اجاره خانه', amount: 5000000, dueDate: 1, type: 'monthly', isActive: true, notificationInterval: 0 };
 
 function sortByDateDesc(txs: Transaction[]): Transaction[] {
   return [...txs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -141,6 +142,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setReminders(prev => prev.map(r => r.id === id ? { ...r, isActive: !r.isActive } : r));
   }, []);
 
+  const completeReminder = useCallback((id: string) => {
+    setReminders(prev =>
+      prev.map(r => r.id === id ? { ...r, completed: !r.completed } : r)
+        .filter(r => !(r.type === 'onetime' && r.completed))
+    );
+  }, []);
+
   const now = new Date();
   const currentMonthTransactions = transactions.filter(t => {
     const d = new Date(t.date);
@@ -184,7 +192,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     budgets, setCategoryBudget,
     categories, addCategory, updateCategory, deleteCategory,
     userProfile, updateUserProfile,
-    reminders, addReminder, deleteReminder, toggleReminder,
+    reminders, addReminder, deleteReminder, toggleReminder, completeReminder,
     editingTransactionId, setEditingTransactionId,
     getBackupData, importBackup, isLoaded,
   };

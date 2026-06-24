@@ -31,12 +31,19 @@ export interface Category {
   parentCategoryId?: ParentCategoryType;
 }
 
+export type ReminderType = 'monthly' | 'onetime';
+
 export interface Reminder {
   id: string;
   title: string;
   amount?: number;
   dueDate: number;
+  dueYear?: number;
+  dueMonth?: number;
+  type: ReminderType;
   isActive: boolean;
+  notificationInterval: number;
+  completed?: boolean;
 }
 
 export interface UserProfile {
