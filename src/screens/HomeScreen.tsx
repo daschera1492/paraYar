@@ -55,26 +55,22 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
     return exps;
   }, [transactions, categories]);
 
-  const budgetWarnings = useMemo(() => {
-    const warnings: { fontFamily: 'Vazirmatn_400Regular', id: string; name: string; spent: number; limit: number; percentage: number}[] = [];
+  const budgetItems = useMemo(() => {
+    const items: { id: string; name: string; spent: number; limit: number; percentage: number; color: string }[] = [];
     Object.entries(budgets).forEach(([catId, rawLimit]) => {
       const limit = Number(rawLimit);
       if (limit <= 0) return;
       const parentCat = PARENT_CATEGORIES.find(p => p.id === catId);
       if (parentCat) {
         const spent = parentExpenses[catId] || 0;
-        const pct = (spent / limit) * 100;
-        if (pct >= 80) warnings.push({ id: catId, name: `کل ${parentCat.name}`, spent, limit, percentage: pct });
+        items.push({ id: catId, name: parentCat.name, spent, limit, percentage: (spent / limit) * 100, color: parentCat.color });
       } else {
         const spent = categoryExpenses[catId] || 0;
-        const pct = (spent / limit) * 100;
-        if (pct >= 80) {
-          const cat = categories.find(c => c.id === catId);
-          if (cat) warnings.push({ id: catId, name: cat.name, spent, limit, percentage: pct });
-        }
+        const cat = categories.find(c => c.id === catId);
+        if (cat) items.push({ id: catId, name: cat.name, spent, limit, percentage: (spent / limit) * 100, color: cat.color });
       }
     });
-    return warnings.sort((a, b) => b.percentage - a.percentage);
+    return items.sort((a, b) => b.percentage - a.percentage);
   }, [budgets, categoryExpenses, parentExpenses, categories]);
 
   const dailyStats = useMemo(() => {
@@ -136,35 +132,6 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
         </View>
       </View>
 
-      {budgetWarnings.length > 0 && (
-        <View style={styles.warningsSection}>
-          {budgetWarnings.map(w => (
-            <View key={w.id} style={styles.warningCard}>
-              <View style={styles.warningIcon}>
-                <Feather name="alert-triangle" size={20} color="#ea580c" />
-              </View>
-              <View style={styles.warningContent}>
-                <Text style={styles.warningTitle}>
-                  {w.percentage >= 100 ? `سقف بودجه ${w.name} رد شده!` : `هشدار بودجه ${w.name}`}
-                </Text>
-                <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, {
-                    width: `${Math.min(w.percentage, 100)}%`,
-                    backgroundColor: w.percentage >= 100 ? '#ef4444' : '#f97316',
-                  }]} />
-                </View>
-                <View style={styles.warningStats}>
-                  <Text style={styles.warningStat}>مصرف: {w.percentage.toFixed(0)}٪</Text>
-                  <Text style={styles.warningStat}>
-                    باقیمانده: {w.limit > w.spent ? formatCurrency(w.limit - w.spent) : '0 تومان'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-
       <View style={styles.calendarSection}>
         <View style={styles.calendarHeader}>
           <Feather name="calendar" size={16} color="#3b82f6" />
@@ -206,6 +173,42 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
               <Text style={[styles.dailyAmount, { color: '#f43f5e' }]}>{formatCurrency(dailyStats.expense, true)}</Text>
             </View>
           </View>
+        </View>
+      )}
+
+      {budgetItems.length > 0 && (
+        <View style={styles.budgetSummarySection}>
+          <View style={styles.budgetSummaryHeader}>
+            <Feather name="pie-chart" size={16} color="#2563eb" />
+            <Text style={styles.budgetSummaryTitle}>بودجه ماه جاری</Text>
+          </View>
+          {budgetItems.map(item => (
+            <View key={item.id} style={styles.budgetSummaryItem}>
+              <View style={styles.budgetSummaryRow}>
+                <Text style={styles.budgetSummaryName} numberOfLines={1}>{item.name}</Text>
+                <Text style={[styles.budgetSummaryPct, item.percentage >= 100 && { color: '#ef4444' }]}>
+                  {item.percentage.toFixed(0)}%
+                </Text>
+              </View>
+              <View style={styles.budgetSummaryBarBg}>
+                <View style={[styles.budgetSummaryBarFill, {
+                  width: `${Math.min(item.percentage, 100)}%`,
+                  backgroundColor: item.percentage >= 100 ? '#ef4444' : item.percentage >= 80 ? '#f97316' : '#10b981',
+                }]} />
+              </View>
+              <View style={styles.budgetSummaryStats}>
+                <Text style={styles.budgetSummaryStat}>
+                  هزینه: {formatCurrency(item.spent, true)}
+                </Text>
+                <Text style={styles.budgetSummaryStat}>
+                  باقی‌مانده: {item.limit > item.spent ? formatCurrency(item.limit - item.spent, true) : '0'}
+                </Text>
+                <Text style={styles.budgetSummaryStat}>
+                  سقف: {formatCurrency(item.limit, true)}
+                </Text>
+              </View>
+            </View>
+          ))}
         </View>
       )}
 
@@ -285,15 +288,17 @@ const styles = StyleSheet.create({
   balanceItemValue: { fontSize: 13, fontFamily: 'Vazirmatn_700Bold', color: '#fff' },
   balanceDivider: { fontFamily: 'Vazirmatn_400Regular', width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.2)'},
 
-  warningsSection: { fontFamily: 'Vazirmatn_400Regular', marginBottom: 24, gap: 12},
-  warningCard: { fontFamily: 'Vazirmatn_400Regular', backgroundColor: '#fff7ed', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#fed7aa'},
-  warningIcon: { fontFamily: 'Vazirmatn_400Regular', width: 40, height: 40, borderRadius: 20, backgroundColor: '#ffedd5', alignItems: 'center', justifyContent: 'center'},
-  warningContent: { fontFamily: 'Vazirmatn_400Regular', flex: 1},
-  warningTitle: { fontSize: 13, fontFamily: 'Vazirmatn_700Bold', color: '#9a3412', marginBottom: 4 },
-  progressBar: { fontFamily: 'Vazirmatn_400Regular', height: 6, borderRadius: 3, backgroundColor: 'rgba(254,215,170,0.5)', marginBottom: 4, overflow: 'hidden'},
-  progressFill: { fontFamily: 'Vazirmatn_400Regular', height: 6, borderRadius: 3},
-  warningStats: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', justifyContent: 'space-between'},
-  warningStat: { fontSize: 11, color: '#c2410c', fontFamily: 'Vazirmatn_500Medium' },
+  budgetSummarySection: { fontFamily: 'Vazirmatn_400Regular', marginBottom: 24, gap: 12 },
+  budgetSummaryHeader: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  budgetSummaryTitle: { fontSize: 14, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937' },
+  budgetSummaryItem: { fontFamily: 'Vazirmatn_400Regular', backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#f3f4f6', shadowColor: '#000', shadowOffset: { width: 0, height: 1}, shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
+  budgetSummaryRow: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  budgetSummaryName: { fontSize: 13, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937', flex: 1 },
+  budgetSummaryPct: { fontSize: 12, fontFamily: 'Vazirmatn_700Bold', color: '#6b7280' },
+  budgetSummaryBarBg: { fontFamily: 'Vazirmatn_400Regular', height: 8, borderRadius: 4, backgroundColor: '#f3f4f6', overflow: 'hidden', marginBottom: 8 },
+  budgetSummaryBarFill: { fontFamily: 'Vazirmatn_400Regular', height: 8, borderRadius: 4 },
+  budgetSummaryStats: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', justifyContent: 'space-between' },
+  budgetSummaryStat: { fontSize: 10, color: '#9ca3af', fontFamily: 'Vazirmatn_500Medium' },
 
   calendarSection: { fontFamily: 'Vazirmatn_400Regular', marginBottom: 24},
   calendarHeader: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12},

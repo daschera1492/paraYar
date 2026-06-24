@@ -162,17 +162,19 @@ export function generateLast14Days(): Date[] {
 }
 
 export function gregorianToShamsi(gy: number, gm: number, gd: number): { year: number; month: number; day: number } {
-  const g_days = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-  const days = 355666 + (365 * gy) + Math.floor((gy + 3) / 4) - Math.floor((gy + 99) / 100) + Math.floor((gy + 399) / 400) + gd + g_days[gm - 1];
-  let jy = -1595 + (33 * Math.floor(days / 12053));
-  let rem = days % 12053;
-  jy += 33 * Math.floor(rem / 366);
-  rem %= 366;
-  if (rem >= 366) { jy += Math.floor((rem - 366) / 365); rem = (rem - 366) % 365; }
-  let jm = 1, jd = rem;
-  if (rem < 186) { jm = 1 + Math.floor(rem / 31); jd = rem % 31; }
-  else { rem -= 186; if (rem < 150) { jm = 7 + Math.floor(rem / 30); jd = rem % 30; } else { jm = 12; jd = rem - 150; } }
-  return { year: jy, month: jm, day: jd + 1 };
+  const nowruz = new Date(gy, 2, 21);
+  const target = new Date(gy, gm - 1, gd);
+  let diff = Math.round((target.getTime() - nowruz.getTime()) / 86400000);
+  let sy = gy - 621;
+  if (diff < 0) {
+    sy = gy - 622;
+    const prevNowruz = new Date(gy - 1, 2, 21);
+    diff = Math.round((target.getTime() - prevNowruz.getTime()) / 86400000);
+  }
+  if (diff < 186) return { year: sy, month: Math.floor(diff / 31) + 1, day: diff % 31 + 1 };
+  diff -= 186;
+  if (diff < 150) return { year: sy, month: Math.floor(diff / 30) + 7, day: diff % 30 + 1 };
+  return { year: sy, month: 12, day: diff - 150 + 1 };
 }
 
 export function shamsiToGregorian(sy: number, sm: number, sd: number): Date {
@@ -180,16 +182,13 @@ export function shamsiToGregorian(sy: number, sm: number, sd: number): Date {
   let jd = sd - 1;
   if (sm <= 6) jd += (sm - 1) * 31;
   else jd += 186 + (sm - 7) * 30;
-  const test = new Date(gy, 2, 21);
-  test.setDate(test.getDate() + jd);
-  const back = gregorianToShamsi(test.getFullYear(), test.getMonth() + 1, test.getDate());
-  if (back.year !== sy) {
-    const adjust = sy < back.year ? -1 : 1;
-    const test2 = new Date(gy + adjust, 2, 21);
-    test2.setDate(test2.getDate() + jd);
-    return test2;
-  }
-  return test;
+  const nowruz = new Date(gy, 2, 21);
+  nowruz.setDate(nowruz.getDate() + jd);
+  const back = gregorianToShamsi(nowruz.getFullYear(), nowruz.getMonth() + 1, nowruz.getDate());
+  if (back.year === sy) return nowruz;
+  const nowruz2 = new Date(gy + (back.year < sy ? 1 : -1), 2, 21);
+  nowruz2.setDate(nowruz2.getDate() + jd);
+  return nowruz2;
 }
 
 export function formatShamsiDate(date: Date): string {
