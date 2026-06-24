@@ -38,7 +38,7 @@ A fully offline Persian personal finance manager mobile app built with **Expo (R
 |---|---|---|
 | ![home](docs/screenshots/home.png) | ![add](docs/screenshots/add.png) | ![reports](docs/screenshots/reports.png) |
 
-*(Screenshots to be added — تصاویر به زودی اضافه می‌شوند)*
+*(Screenshots coming soon — تصاویر به زودی اضافه می‌شوند)*
 
 ---
 
