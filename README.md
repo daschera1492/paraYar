@@ -155,6 +155,8 @@ cd android
 ./gradlew assembleRelease
 ```
 
+> **⚠️ Important:** `npx expo prebuild --clean` overwrites `android/app/build.gradle` and removes custom configurations. You **must** add the `splits` block (step 4) after every prebuild.
+
 ### Build APK / ساخت APK
 
 ```bash
@@ -168,23 +170,35 @@ npm ci
 # 3. Generate Android project / تولید پروژه اندروید
 npx expo prebuild --platform android --clean
 
-# 4. Update NDK version in android/build.gradle if needed
+# 4. Add ABI splits to android/app/build.gradle
+#    Insert this block after buildTypes { ... } and before packagingOptions { ... }:
+#
+#    splits {
+#        abi {
+#            enable true
+#            reset()
+#            include 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'
+#            universalApk true
+#        }
+#    }
+
+# 5. Update NDK version in android/build.gradle if needed
 #    (change ndkVersion to match your installed NDK)
 
-# 5. Set up local.properties if SDK is read-only
+# 6. Set up local.properties if SDK is read-only
 #    (see section 2 above)
 
-# 6. Build APK / ساخت APK
+# 7. Build APK / ساخت APK
 cd android
 $env:CMAKE_VERSION = "3.22.1"   # Windows PowerShell
 ./gradlew assembleRelease
 
-# 7. (Optional) Build AAB for Google Play / ساخت AAB برای گوگل پلی
+# 8. (Optional) Build AAB for Google Play / ساخت AAB برای گوگل پلی
 ./gradlew bundleRelease
 
 # Outputs:
-# APK: android/app/build/outputs/apk/release/app-release.apk
-# AAB: android/app/build/outputs/bundle/release/app-release.aab
+# APKs: android/app/build/outputs/apk/release/
+# AAB:  android/app/build/outputs/bundle/release/
 ```
 
 ### Troubleshooting Checklist / چک‌لیست رفع خطا
@@ -202,7 +216,12 @@ If the build fails, check in order:
 
 | File | Size | Description |
 |---|---|---|
-| `app-release.apk` | ~78 MB | Universal APK (all architectures) |
+| `app-arm64-v8a-release.apk` | ~33 MB | **Recommended for modern phones** (2020+) |
+| `app-armeabi-v7a-release.apk` | ~28 MB | Older phones (pre-2020) |
+| `app-x86_64-release.apk` | ~34 MB | 64-bit emulators |
+| `app-x86-release.apk` | ~34 MB | 32-bit emulators |
+| `app-universal-release.apk` | ~82 MB | All architectures in one |
+| `app-release.aab` | ~54 MB | Google Play submission |
 
 ---
 
