@@ -117,7 +117,17 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           AsyncStorage.getItem(KEYS.debts),
           AsyncStorage.getItem(KEYS.lock),
         ]);
-        if (txData) setTransactions(sortByDateDesc(JSON.parse(txData)));
+        if (txData) {
+          let txs: Transaction[] = JSON.parse(txData);
+          // migration v1.3 → v1.4: assign accountId to old transactions
+          let migrated = false;
+          txs = txs.map(t => {
+            if (!t.accountId) { t.accountId = 'cash_default'; migrated = true; }
+            return t;
+          });
+          setTransactions(sortByDateDesc(txs));
+          if (migrated) AsyncStorage.setItem(KEYS.transactions, JSON.stringify(txs));
+        }
         if (catData) setCategories(JSON.parse(catData));
         if (budData) setBudgets(JSON.parse(budData));
         if (remData) setReminders(JSON.parse(remData));
