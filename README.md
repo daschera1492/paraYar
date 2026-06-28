@@ -78,150 +78,231 @@ GitHub Actions is currently disabled for this repo. Releases are built locally a
 
 **مهم:** قابلیت GitHub Actions برای این مخزن غیرفعال است. خروجی‌ها به صورت محلی ساخته و به صورت دستی در بخش ریلیزها قرار می‌گیرند.
 
-### Prerequisites / پیش‌نیازها
-- Node.js 20+
-- Java 17+
-- Android SDK (with NDK 27.3+ and CMake 3.22.1+)
-- An Android device or emulator
+---
 
-### Known Build Issues / مشکلات شناخته شده بیلد
+### راهنمای کامل بیلد از صفر (روی ویندوز خام)
 
-#### 1. NDK Version Mismatch / عدم تطابق نسخه NDK
+> **نکته مهم:** هربار روی یه ویندوز خام بیلد می‌گیری، این مراحل رو **قدم به قدم** اجرا کن.
 
-**Problem:** Expo 52 + React Native 0.76.7 may request NDK 26.1.10909125, but your system may have a different version.
+#### مرحله ۰: پیش‌نیازها (نسخه‌های دقیق)
 
-**Solution:** In `android/build.gradle`, change `ndkVersion` to match your installed NDK:
+| نرم‌افزار | نسخه مورد نیاز | نحوه بررسی |
+|---|---|---|
+| **Node.js** | 20+ | `node --version` |
+| **Java (JDK)** | 17+ | `java -version` |
+| **Android SDK** | API 35+ | در `C:\Android\android-sdk` |
+| **Android NDK** | **27.3.13750724** (دقیقاً این نسخه) | `ls C:\Android\android-sdk\ndk\` |
+| **CMake** | **3.22.1** (دقیقاً این نسخه) | باید نصب بشه (مرحله ۳) |
+| **Gradle** | همراه پروژه | نیاز به نصب جدا نداره |
 
-```groovy
-// Before (default from Expo)
-ndkVersion = "26.1.10909125"
+#### مرحله ۱: نصب SDK و NDK
 
-// After (change to your installed version)
-ndkVersion = "27.3.13750724"
+اگه Android SDK نداری، نصبش کن و بعد NDK رو اضافه کن:
+
+```powershell
+# نصب NDK (اگه نداری)
+& "C:\Android\android-sdk\cmdline-tools\latest\bin\sdkmanager.bat" "ndk;27.3.13750724"
 ```
 
-To find your installed NDK version:
-```bash
-ls C:/Android/android-sdk/ndk/
+```powershell
+# بررسی نسخه NDK
+ls "C:\Android\android-sdk\ndk\"
+# باید پوشه 27.3.13750724 ببینی
 ```
 
-#### 2. Read-Only SDK Directory / دایرکتوری SDK قابل نوشتن نیست
+> **مشکل رایج:** اگه NDK نسخه دیگه‌ای داری (مثلاً 26.x)، حتماً `ndkVersion` رو توی `android/build.gradle` عوض کن:
+> ```groovy
+> ndkVersion = "27.3.13750724"  // باید دقیقاً با پوشه NDK هماهنگ باشه
+> ```
 
-**Problem:** If the Android SDK is installed in a read-only location (e.g. `C:\Android\android-sdk`), CMake cannot be installed there automatically, causing errors like:
+#### مرحله ۲: حل مشکل SDK فقط-خواندنی (Read-Only)
+
+اگه `C:\Android\android-sdk` فقط خواندنیه (مثلاً توی Program Files)، CMake نمی‌تونه اونجا بنویسه. باید CMake رو توی یه پوشه writable نصب کنی:
+
+```powershell
+# ۱. پوشه موقت بساز
+$env:CMAKE_TEMP = "$env:TEMP\android_sdk_temp"
+
+# ۲. CMake 3.22.1 رو نصب کن
+& "C:\Android\android-sdk\cmdline-tools\latest\bin\sdkmanager.bat" --sdk_root="$env:CMAKE_TEMP" "cmake;3.22.1"
+
+# ۳. بررسی کن نصب شده
+ls "$env:CMAKE_TEMP\cmake\3.22.1"
+# باید پوشه bin ببینی
 ```
-The SDK directory is not writable: C:\Android\android-sdk
+
+#### مرحله ۳: دانلود فونت وزیرمتن
+
+```powershell
+cd maseAccountant
+node scripts/download-font.js
+# باید فایل src/assets/fonts/Vazirmatn-Variable.ttf ساخته بشه
 ```
 
-**Solution:** Install CMake in a writable temporary directory and point `cmake.dir` to it:
+#### مرحله ۴: نصب وابستگی‌ها
 
-```bash
-# Install CMake 3.22.1 in a temp directory
-sdkmanager --sdk_root=C:\path\to\writable\temp\android_sdk_temp "cmake;3.22.1"
+```powershell
+cd maseAccountant
+npm ci
 ```
 
-Then set in `android/local.properties`:
+#### مرحله ۵: تولید پروژه اندروید
+
+```powershell
+npx expo prebuild --platform android --clean
+```
+
+> **⚠️ هشدار:** این دستور فایل `android/app/build.gradle` رو بازنویسی می‌کنه. بعدش حتماً باید مرحله ۶ رو انجام بدی.
+
+#### مرحله ۶: تنظیم فایل‌ها (بعد از هر prebuild)
+
+**الف) `android/local.properties`:**
+
 ```properties
 sdk.dir=C:/Android/android-sdk
-cmake.dir=C:/path/to/writable/temp/android_sdk_temp/cmake/3.22.1
 ndk.dir=C:/Android/android-sdk/ndk/27.3.13750724
+cmake.dir=C:/Users/<YOUR_USER>/AppData/Local/Temp/1/opencode/android_sdk_temp/cmake/3.22.1
 ```
 
-Also set the environment variable:
+> مسیر `cmake.dir` رو با مسیر واقعی مرحله ۲ عوض کن.
+
+**ب) `android/build.gradle`:**
+
+```groovy
+ndkVersion = "27.3.13750724"  // باید دقیقاً با نسخه NDK نصب شده هماهنگ باشه
+```
+
+**ج) `android/app/build.gradle` — اضافه کردن splits:**
+
+بعد از بلوک `buildTypes { ... }` و قبل از `packagingOptions { ... }` این رو اضافه کن:
+
+```groovy
+splits {
+    abi {
+        enable true
+        reset()
+        include 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'
+        universalApk true
+    }
+}
+```
+
+#### مرحله ۷: پاکسازی پروسه‌های قبلی
+
+**این مرحله رو حتماً قبل از هر بیلد انجام بده:**
+
 ```powershell
-$env:CMAKE_VERSION = "3.22.1"
+# کشتن تمام پروسه‌های Java/Gradle باقی‌مانده
+Get-Process -Name "java" -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep -Seconds 3
 ```
 
-> **Why CMake 3.22.1?** The `react-native-screens` module specifically requires this version. Newer versions like 3.31.5 may not be compatible.
+> **دلیل:** اگه بیلد قبلی قطع شده باشه، پروسه‌های Java زامبی موندن و بیلد جدید رو بلاک می‌کنن.
 
-#### 3. Build Hangs or Gets Interrupted / بیلد قطع شدن
+#### مرحله ۸: ساخت اسکریپت بیلد detached
 
-**Problem:** The C++ (native) compilation phase can take 20-30 minutes on the first build. If the build process gets interrupted (timeout, terminal close, etc.), zombie Java processes may remain and block future builds.
+**⚠️ نکته حیاتی:** بیلد اندروید **نباید** مستقیم از ترمینال اجرا بشه. اگه از ترمینال عادی اجرا کنی، هربار که ترمینال بسته بشه یا تایم‌اوت بخوره، **تمام پروسه‌های فرزند (Java, Metro, CMake) کشته می‌شن** و وسط بیلد قطع می‌شه.
 
-**Symptoms:**
-- `build_stacktrace_targets.txt` shows `java.lang.InterruptedException`
-- Java processes remain running with no progress
-- The build log stops updating for long periods
+**راه‌حل:** یه فایل batch بساز و کاملاً detached اجراش کن:
 
-**Solution:**
-```bash
-# Kill stale Java processes
-Get-Process -Name "java" | Stop-Process -Force
+```powershell
+# ۱. فایل batch بساز
+@"
+@echo off
+cd /d C:\path\to\maseAccountant\android
+set CMAKE_VERSION=3.22.1
+set CI=true
+echo [%date% %time%] Build started > build.log
+call gradlew.bat assembleRelease >> build.log 2>&1
+echo [%date% %time%] BUILD_EXIT_CODE: %ERRORLEVEL% >> build.log
+"@ | Out-File -FilePath "C:\path\to\maseAccountant\android\build.bat" -Encoding ASCII
 
-# Clean the build
-cd android
-./gradlew clean
+# ۲. اجرا کاملاً detached (پنجره مخفی، مستقل از ترمینال)
+Start-Process "cmd.exe" -ArgumentList '/c C:\path\to\maseAccountant\android\build.bat' -WindowStyle Hidden
 
-# Re-run the build (first build takes ~25 min)
-./gradlew assembleRelease
+Write-Output "Build started detached. Monitor with: Get-Content android/build.log -Tail 10"
 ```
 
-> **⚠️ Important:** `npx expo prebuild --clean` overwrites `android/app/build.gradle` and removes custom configurations. You **must** add the `splits` block (step 4) after every prebuild.
+#### مرحله ۹: مانیتور کردن پیشرفت بیلد
 
-### Build APK / ساخت APK
+```powershell
+# هر ۱-۲ دقیقه اجرا کن تا ببینی کجایی
+Get-Content "android/build.log" -Tail 15
 
-```bash
-# 1. Clone / کلون کردن
-git clone https://github.com/boyitnew/maseAccountant.git
-cd maseAccountant
+# بررسی پروسه‌های فعال
+Get-Process -Name "java" -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, WorkingSet64
 
-# 2. Install dependencies / نصب وابستگی‌ها
-npm ci
-
-# 3. Generate Android project / تولید پروژه اندروید
-npx expo prebuild --platform android --clean
-
-# 4. Add ABI splits to android/app/build.gradle
-#    Insert this block after buildTypes { ... } and before packagingOptions { ... }:
-#
-#    splits {
-#        abi {
-#            enable true
-#            reset()
-#            include 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'
-#            universalApk true
-#        }
-#    }
-
-# 5. Update NDK version in android/build.gradle if needed
-#    (change ndkVersion to match your installed NDK)
-
-# 6. Set up local.properties if SDK is read-only
-#    (see section 2 above)
-
-# 7. Build APK / ساخت APK
-cd android
-$env:CMAKE_VERSION = "3.22.1"   # Windows PowerShell
-./gradlew assembleRelease
-
-# 8. (Optional) Build AAB for Google Play / ساخت AAB برای گوگل پلی
-./gradlew bundleRelease
-
-# Outputs:
-# APKs: android/app/build/outputs/apk/release/
-# AAB:  android/app/build/outputs/bundle/release/
+# بررسی آخرین task های Gradle
+$lines = Get-Content "android/build.log"
+$lines | Where-Object { $_ -match '^> Task' } | Select-Object -Last 5
 ```
 
-### Troubleshooting Checklist / چک‌لیست رفع خطا
+**مراحل بیلد و زمان تقریبی:**
 
-If the build fails, check in order:
-
-1. **NDK version** — `android/build.gradle` → `ndkVersion` must match installed NDK
-2. **CMake version** — `local.properties` → `cmake.dir` must point to CMake 3.22.1
-3. **Environment variable** — `$env:CMAKE_VERSION` must match the cmake.dir version
-4. **Stale processes** — Kill any leftover Java/Gradle processes before retrying
-5. **Clean build** — Run `./gradlew clean` before retrying
-6. **Build log** — Check `android/build.log` and `android/app/build/intermediates/cxx/*/logs/` for errors
-
-### Output Files / فایل‌های خروجی
-
-| File | Size | Description |
+| مرحله | Log علامت | زمان |
 |---|---|---|
-| `app-arm64-v8a-release.apk` | ~33 MB | **Recommended for modern phones** (2020+) |
-| `app-armeabi-v7a-release.apk` | ~28 MB | Older phones (pre-2020) |
-| `app-x86_64-release.apk` | ~34 MB | 64-bit emulators |
-| `app-x86-release.apk` | ~34 MB | 32-bit emulators |
-| `app-universal-release.apk` | ~82 MB | All architectures in one |
-| `app-release.aab` | ~54 MB | Google Play submission |
+| Gradle Config | `Task :app:checkReleaseAarMetadata` | ~1 min |
+| CMake Configure (4 معماری) | `configureCMakeRelWithDebInfo[arm64-v8a]` | ~2 min |
+| **CMake Build (4 معماری)** | `buildCMakeRelWithDebInfo[arm64-v8a]` | **~15-20 min** |
+| Metro Bundler (JS Bundle) | `createBundleReleaseJsAndAssets` | ~3-5 min |
+| DEX + APK | `dexBuilderRelease`, `assembleRelease` | ~2 min |
+| **کل** | | **~25-30 min** |
+
+#### مرحله ۱۰: بررسی خروجی
+
+```powershell
+# APK ها اینجا هستن
+Get-ChildItem "android/app/build/outputs/apk/release/*.apk"
+```
+
+---
+
+### فایل‌های خروجی
+
+| فایل | سایز | توضیح |
+|---|---|---|
+| `app-arm64-v8a-release.apk` | ~33 MB | **توصیه شده برای گوشی‌های 2020+** |
+| `app-armeabi-v7a-release.apk` | ~28 MB | گوشی‌های قدیمی (قبل از 2020) |
+| `app-x86_64-release.apk` | ~34 MB | امولاتورهای 64 بیت |
+| `app-x86-release.apk` | ~34 MB | امولاتورهای 32 بیت |
+| `app-universal-release.apk` | ~82 MB | همه معماری‌ها در یک فایل |
+| `app-release.aab` | ~54 MB | برای انتشار در گوگل پلی |
+
+---
+
+### چک‌لیست عیب‌یابی (اگه بیلد خطا داد)
+
+به ترتیب چک کن:
+
+1. **پروسه‌های زامبی** — `Get-Process -Name "java" | Stop-Process -Force` → `gradlew clean` → دوباره بیلد
+2. **نسخه NDK** — `android/build.gradle` → `ndkVersion` باید دقیقاً `27.3.13750724` باشه
+3. **مسیر CMake** — `local.properties` → `cmake.dir` باید به `cmake/3.22.1` اشاره کنه
+4. **متغیر محیطی** — `$env:CMAKE_VERSION = "3.22.1"` باید ست باشه
+5. **فونت** — فایل `src/assets/fonts/Vazirmatn-Variable.ttf` باید وجود داشته باشه
+6. **لاگ بیلد** — `android/build.log` رو چک کن
+7. **لاگ C++** — `android/app/build/intermediates/cxx/*/logs/` رو چک کن
+
+### ساخت ریلیز GitHub
+
+```powershell
+# ۱. ورژن رو آپدیت کن (app.json و package.json)
+
+# ۲. Commit و Tag
+git add -A
+git commit -m "release: v1.x.x"
+git tag -a v1.x.x -m "v1.x.x"
+
+# ۳. Push
+git push origin master --tags
+
+# ۴. ریلیز بساز با APK ها
+gh release create v1.x.x `
+  --title "v1.x.x - عنوان" `
+  --notes "توضیحات" `
+  "android/app/build/outputs/apk/release/app-arm64-v8a-release.apk#app-arm64-v8a-release.apk" `
+  "android/app/build/outputs/apk/release/app-armeabi-v7a-release.apk#app-armeabi-v7a-release.apk" `
+  "android/app/build/outputs/apk/release/app-universal-release.apk#app-universal-release.apk"
+```
 
 ---
 
