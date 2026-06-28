@@ -33,6 +33,7 @@ type ViewName = 'home' | 'accounts' | 'reports' | 'add' | 'transfer' | 'settings
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<ViewName>('home');
+  const [settingsKey, setSettingsKey] = useState(0);
   const [smsData, setSmsData] = useState<{ amount: number; type: 'income' | 'expense'; bankName: string; cardSuffix: string } | null>(null);
   const { isLoaded, appLock, userProfile } = useFinance();
   const [userUnlocked, setUserUnlocked] = useState(false);
@@ -61,6 +62,13 @@ function AppContent() {
     });
     return () => sub.remove();
   }, []);
+
+  const handleViewChange = useCallback((view: ViewName) => {
+    if (view === 'settings' && currentView === 'settings') {
+      setSettingsKey(prev => prev + 1);
+    }
+    setCurrentView(view);
+  }, [currentView]);
 
   const openAddScreen = useCallback(() => {
     setSmsData(null);
@@ -91,7 +99,7 @@ function AppContent() {
         {currentView === 'accounts' && <AccountsScreen />}
         {currentView === 'reports' && <ReportsScreen />}
         {currentView === 'transfer' && <TransferScreen onClose={() => setCurrentView('home')} />}
-        {currentView === 'settings' && <SettingsScreen onNavigateTo={(view) => setCurrentView(view as ViewName)} />}
+        {currentView === 'settings' && <SettingsScreen key={settingsKey} onNavigateTo={(view) => setCurrentView(view as ViewName)} />}
         {currentView === 'reminders' && <RemindersScreen />}
       </View>
 
@@ -100,7 +108,7 @@ function AppContent() {
       )}
 
       {currentView !== 'add' && currentView !== 'transfer' && (
-        <BottomNav currentView={currentView} onChange={setCurrentView} onTransfer={() => setCurrentView('transfer')} />
+        <BottomNav currentView={currentView} onChange={handleViewChange} onTransfer={() => setCurrentView('transfer')} />
       )}
     </View>
   );
