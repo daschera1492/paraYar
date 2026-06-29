@@ -36,8 +36,9 @@ jobs:
           mkdir -p android
           echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-      - name: Build APK
+      - name: Fix permissions and Build APK
         run: |
+          chmod +x android/gradlew
           cd android
           ./gradlew assembleRelease
 
