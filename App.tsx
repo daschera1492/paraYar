@@ -118,10 +118,6 @@ function AppContent() {
   }, []);
 
   const handleViewChange = useCallback((view: ViewName) => {
-    if (view === 'profile') {
-      setSettingsTab('profile');
-      setSettingsKey(prev => prev + 1);
-    }
     setCurrentView(view);
   }, []);
 
@@ -163,7 +159,8 @@ function AppContent() {
       )}
 
       {currentView !== 'add' && currentView !== 'transfer' && (
-        <BottomNav currentView={currentView} onChange={handleViewChange} onTransfer={() => setCurrentView('transfer')} />
+        <BottomNav currentView={currentView} onChange={handleViewChange}
+          onTransfer={() => setCurrentView('transfer')} onMenuPress={toggleDrawer} />
       )}
 
       <Modal visible={drawerOpen} transparent animationType="none" onRequestClose={closeDrawer}>

@@ -2,15 +2,16 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
-export type ViewName = 'home' | 'accounts' | 'reports' | 'add' | 'transfer' | 'profile' | 'reminders';
+export type ViewName = 'home' | 'accounts' | 'reports' | 'add' | 'transfer' | 'reminders' | 'profile';
 
 interface BottomNavProps {
   currentView: ViewName;
   onChange: (view: ViewName) => void;
   onTransfer?: () => void;
+  onMenuPress?: () => void;
 }
 
-export default function BottomNav({ currentView, onChange, onTransfer }: BottomNavProps) {
+export default function BottomNav({ currentView, onChange, onTransfer, onMenuPress }: BottomNavProps) {
   return (
     <View style={styles.container}>
       <View style={styles.inner}>
@@ -38,9 +39,9 @@ export default function BottomNav({ currentView, onChange, onTransfer }: BottomN
           <Text style={[styles.label, currentView === 'reports' && styles.activeLabel]}>گزارش‌ها</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tab} onPress={() => onChange('profile')}>
-          <Feather name="user" size={22} color={currentView === 'profile' ? '#2563eb' : '#9ca3af'} />
-          <Text style={[styles.label, currentView === 'profile' && styles.activeLabel]}>پروفایل</Text>
+        <TouchableOpacity style={styles.tab} onPress={onMenuPress} activeOpacity={0.7}>
+          <Feather name="menu" size={22} color="#9ca3af" />
+          <Text style={styles.label}>منو</Text>
         </TouchableOpacity>
       </View>
     </View>
