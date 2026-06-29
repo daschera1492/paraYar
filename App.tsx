@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ActivityIndicator, StyleSheet, StatusBar, I18nManager, AppState,
-  Animated, Pressable, ScrollView, Modal,
+  Animated, Pressable, ScrollView, Modal, BackHandler,
 } from 'react-native';
 
 I18nManager.allowRTL(true);
@@ -64,6 +64,8 @@ function AppContent() {
   const isUnlocked = !appLock.enabled || userUnlocked;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const lastBackPress = useRef(0);
+  const [showExitToast, setShowExitToast] = useState(false);
   const drawerAnim = useRef(new Animated.Value(300)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
 
@@ -121,6 +123,25 @@ function AppContent() {
     setCurrentView(view);
   }, []);
 
+  useEffect(() => {
+    const onBackPress = () => {
+      if (currentView !== 'home') {
+        setCurrentView('home');
+        return true;
+      }
+      const now = Date.now();
+      if (lastBackPress.current && now - lastBackPress.current < 2000) {
+        return false;
+      }
+      lastBackPress.current = now;
+      setShowExitToast(true);
+      setTimeout(() => setShowExitToast(false), 2000);
+      return true;
+    };
+    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+  }, [currentView]);
+
   const openAddScreen = useCallback(() => {
     setSmsData(null);
     setCurrentView('add');
@@ -161,6 +182,12 @@ function AppContent() {
       {currentView !== 'add' && currentView !== 'transfer' && (
         <BottomNav currentView={currentView} onChange={handleViewChange}
           onTransfer={() => setCurrentView('transfer')} onMenuPress={toggleDrawer} />
+      )}
+
+      {showExitToast && (
+        <View style={styles.exitToast}>
+          <Text style={styles.exitToastText}>برای خروج دوباره فشار دهید</Text>
+        </View>
       )}
 
       <Modal visible={drawerOpen} transparent animationType="none" onRequestClose={closeDrawer}>
@@ -250,4 +277,10 @@ const styles = StyleSheet.create({
   },
   drawerItemIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
   drawerItemLabel: { flex: 1, fontSize: 15, fontFamily: 'Vazirmatn_700Bold', color: '#374151' },
+  exitToast: {
+    position: 'absolute', bottom: 100, alignSelf: 'center',
+    backgroundColor: '#1f2937', borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12,
+    zIndex: 100, elevation: 20,
+  },
+  exitToastText: { fontSize: 14, fontFamily: 'Vazirmatn_600SemiBold', color: '#fff' },
 });

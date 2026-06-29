@@ -6,6 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
 import CurrencyInput from '../components/CurrencyInput';
 import ShamsiDatePicker from '../components/ShamsiDatePicker';
+import AccountPicker from '../components/AccountPicker';
 import { formatShamsiDate } from '../utils';
 
 interface TransferScreenProps {
@@ -19,8 +20,6 @@ export default function TransferScreen({ onClose }: TransferScreenProps) {
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-
-  const activeAccounts = accounts.filter(a => a.id !== fromAccountId);
 
   const handleTransfer = () => {
     const amt = Number(amount);
@@ -62,39 +61,17 @@ export default function TransferScreen({ onClose }: TransferScreenProps) {
           <Text style={styles.transferDesc}>انتقال پول بین حساب‌های خود</Text>
         </View>
 
-        <View style={styles.accountSection}>
-          <Text style={styles.sectionLabel}>از حساب</Text>
-          <View style={styles.accountList}>
-            {accounts.map(acct => (
-              <TouchableOpacity key={acct.id}
-                style={[styles.accountCard, fromAccountId === acct.id && { backgroundColor: '#dbeafe', borderColor: '#2563eb' }]}
-                onPress={() => { setFromAccountId(acct.id); if (toAccountId === acct.id) setToAccountId(''); }}>
-                <View style={[styles.accountDot, { backgroundColor: acct.color }]} />
-                <Text style={styles.accountName}>{acct.name}</Text>
-                {fromAccountId === acct.id && <Feather name="check-circle" size={18} color="#2563eb" />}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        <AccountPicker label="از حساب" selectedId={fromAccountId}
+          onSelect={(id) => { setFromAccountId(id); if (toAccountId === id) setToAccountId(''); }}
+          excludeId={toAccountId || undefined} />
 
         <View style={styles.arrowDown}>
           <Feather name="arrow-down" size={24} color="#9ca3af" />
         </View>
 
-        <View style={styles.accountSection}>
-          <Text style={styles.sectionLabel}>به حساب</Text>
-          <View style={styles.accountList}>
-            {activeAccounts.map(acct => (
-              <TouchableOpacity key={acct.id}
-                style={[styles.accountCard, toAccountId === acct.id && { backgroundColor: '#dbeafe', borderColor: '#2563eb' }]}
-                onPress={() => setToAccountId(acct.id)}>
-                <View style={[styles.accountDot, { backgroundColor: acct.color }]} />
-                <Text style={styles.accountName}>{acct.name}</Text>
-                {toAccountId === acct.id && <Feather name="check-circle" size={18} color="#2563eb" />}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        <AccountPicker label="به حساب" selectedId={toAccountId}
+          onSelect={(id) => setToAccountId(id)}
+          excludeId={fromAccountId || undefined} />
 
         <CurrencyInput value={amount} onChangeAmount={setAmount} label="مبلغ انتقال (تومان)"
           placeholder="0" autoFocus={false}
@@ -135,12 +112,7 @@ const styles = StyleSheet.create({
   transferIllustration: { alignItems: 'center', gap: 12, paddingVertical: 16 },
   arrowCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
   transferDesc: { fontSize: 14, color: '#6b7280', fontFamily: 'Vazirmatn_500Medium' },
-  accountSection: { gap: 8 },
-  sectionLabel: { fontSize: 14, fontFamily: 'Vazirmatn_500Medium', color: '#9ca3af' },
-  accountList: { gap: 8 },
-  accountCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#f3f4f6' },
-  accountDot: { width: 12, height: 12, borderRadius: 6 },
-  accountName: { flex: 1, fontSize: 14, fontFamily: 'Vazirmatn_600SemiBold', color: '#1f2937' },
+
   arrowDown: { alignItems: 'center' },
   dateField: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#e5e7eb' },
   dateFieldText: { flex: 1, fontSize: 16, color: '#1f2937', textAlign: 'center' },
