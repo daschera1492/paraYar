@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Modal, Pressable,
+  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Modal,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -14,6 +14,11 @@ import {
 import { formatCurrency, calculateGoalProgress, generateId, getShamsiNow, SHAMSI_MONTH_NAMES, formatShamsiDateParts, gregorianToShamsi } from '../utils';
 import CurrencyInput from '../components/CurrencyInput';
 import ShamsiDatePicker from '../components/ShamsiDatePicker';
+
+const SECTION_TITLES: Record<string, string> = {
+  profile: 'پروفایل', budgets: 'بودجه', categories: 'دسته‌ها',
+  goals: 'اهداف', debts: 'بدهی‌ها', backup: 'پشتیبان', security: 'امنیت',
+};
 
 const iconMap: Record<string, any> = {
   'credit-card': 'credit-card', monitor: 'monitor', gift: 'gift', coffee: 'coffee',
@@ -775,30 +780,7 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
   return (
     <View style={{ flex: 1, backgroundColor: '#f1f5f9' }}>
       <View style={styles.settingsHeader}>
-        <View style={styles.headerRow}>
-          <View style={{ width: 40 }} />
-          <Text style={{ fontSize: 20, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937' }}>تنظیمات</Text>
-          <View style={{ width: 40 }} />
-        </View>
-      </View>
-
-      <View style={styles.tabRow}>
-        {[
-          { key: 'profile', label: 'پروفایل', icon: 'user' },
-          { key: 'budgets', label: 'بودجه', icon: 'pie-chart' },
-          { key: 'categories', label: 'دسته‌ها', icon: 'grid' },
-          { key: 'goals', label: 'اهداف', icon: 'flag' },
-          { key: 'debts', label: 'بدهی‌ها', icon: 'users' },
-          { key: 'backup', label: 'پشتیبان', icon: 'database' },
-          { key: 'security', label: 'امنیت', icon: 'lock' },
-        ].map(tab => (
-          <TouchableOpacity key={tab.key}
-            style={[styles.tabBtn, activeTab === tab.key && styles.tabBtnActive]}
-            onPress={() => setActiveTab(tab.key)}>
-            <Feather name={tab.icon as any} size={16} color={activeTab === tab.key ? '#4f46e5' : '#9ca3af'} />
-            <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>{tab.label}</Text>
-          </TouchableOpacity>
-        ))}
+        <Text style={styles.headerTitle}>{SECTION_TITLES[activeTab] || 'پروفایل'}</Text>
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24, paddingBottom: 140 }}>
@@ -885,21 +867,7 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
 
 const styles = StyleSheet.create({
   settingsHeader: { backgroundColor: '#f1f5f9', paddingTop: 48, paddingHorizontal: 24, paddingBottom: 8},
-  headerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-
-  tabRow: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 4,
-    paddingHorizontal: 16, paddingVertical: 8,
-    backgroundColor: '#f1f5f9',
-  },
-  tabBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 10, paddingVertical: 6,
-    borderRadius: 10, backgroundColor: '#fff',
-  },
-  tabBtnActive: { backgroundColor: '#eef2ff' },
-  tabLabel: { fontSize: 10, fontFamily: 'Vazirmatn_500Medium', color: '#9ca3af' },
-  tabLabelActive: { color: '#4f46e5', fontFamily: 'Vazirmatn_700Bold' },
+  headerTitle: { fontSize: 20, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937', textAlign: 'center' },
 
   avatarSection: { alignItems: 'center', gap: 12, marginBottom: 8},
   avatarBig: { width: 96, height: 96, borderRadius: 48, backgroundColor: 'rgba(219,234,254,0.5)', alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: '#fff'},

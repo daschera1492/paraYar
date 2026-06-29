@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ActivityIndicator, StyleSheet, StatusBar, I18nManager, AppState,
-  Animated, Pressable, ScrollView, TouchableOpacity,
+  Animated, Pressable, ScrollView, Modal,
 } from 'react-native';
 
 I18nManager.allowRTL(true);
@@ -42,6 +42,16 @@ const DRAWER_TABS: { key: SettingTab; label: string; icon: string }[] = [
   { key: 'backup', label: 'پشتیبان', icon: 'database' },
   { key: 'security', label: 'امنیت', icon: 'lock' },
 ];
+
+const SECTION_TITLES: Record<string, string> = {
+  profile: 'پروفایل',
+  budgets: 'بودجه',
+  categories: 'دسته‌ها',
+  goals: 'اهداف',
+  debts: 'بدهی‌ها',
+  backup: 'پشتیبان',
+  security: 'امنیت',
+};
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<ViewName>('home');
@@ -101,7 +111,6 @@ function AppContent() {
       }
     };
     checkSms();
-
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') checkSms();
     });
@@ -140,7 +149,7 @@ function AppContent() {
 
   return (
     <View style={styles.appContainer}>
-      <View style={styles.contentArea}>
+      <View style={{ flex: 1 }}>
         {currentView === 'home' && <HomeScreen onEdit={openAddScreen} onToggleDrawer={toggleDrawer} />}
         {currentView === 'accounts' && <AccountsScreen />}
         {currentView === 'reports' && <ReportsScreen />}
@@ -157,28 +166,32 @@ function AppContent() {
         <BottomNav currentView={currentView} onChange={handleViewChange} onTransfer={() => setCurrentView('transfer')} />
       )}
 
-      <Animated.View style={[styles.drawerOverlay, { opacity: overlayAnim }]}>
-        <Pressable style={{ flex: 1 }} onPress={closeDrawer} />
-      </Animated.View>
-      <Animated.View style={[styles.drawerPanel, { transform: [{ translateX: drawerAnim }] }]}>
-        <View style={styles.drawerHeader}>
-          <Text style={styles.drawerTitle}>بخش‌های تنظیمات</Text>
-          <Pressable onPress={closeDrawer} style={styles.drawerClose}>
-            <Feather name="x" size={22} color="#6b7280" />
-          </Pressable>
+      <Modal visible={drawerOpen} transparent animationType="none" onRequestClose={closeDrawer}>
+        <View style={{ flex: 1 }}>
+          <Animated.View style={[styles.drawerOverlay, { opacity: overlayAnim }]}>
+            <Pressable style={{ flex: 1 }} onPress={closeDrawer} />
+          </Animated.View>
+          <Animated.View style={[styles.drawerPanel, { transform: [{ translateX: drawerAnim }] }]}>
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerTitle}>منو</Text>
+              <Pressable onPress={closeDrawer} style={styles.drawerClose}>
+                <Feather name="x" size={22} color="#6b7280" />
+              </Pressable>
+            </View>
+            <ScrollView>
+              {DRAWER_TABS.map(tab => (
+                <Pressable key={tab.key} style={styles.drawerItem}
+                  onPress={() => handleDrawerSelect(tab.key)}>
+                  <View style={styles.drawerItemIcon}>
+                    <Feather name={tab.icon as any} size={20} color="#6b7280" />
+                  </View>
+                  <Text style={styles.drawerItemLabel}>{tab.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Animated.View>
         </View>
-        <ScrollView>
-          {DRAWER_TABS.map(tab => (
-            <Pressable key={tab.key} style={styles.drawerItem}
-              onPress={() => handleDrawerSelect(tab.key)}>
-              <View style={styles.drawerItemIcon}>
-                <Feather name={tab.icon as any} size={20} color="#6b7280" />
-              </View>
-              <Text style={styles.drawerItemLabel}>{tab.label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </Animated.View>
+      </Modal>
     </View>
   );
 }
@@ -219,7 +232,6 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#f8fafc' },
   appContainer: { flex: 1, backgroundColor: '#f8fafc' },
-  contentArea: { flex: 1, overflow: 'hidden' },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', gap: 16 },
   loadingText: { fontSize: 14, color: '#6b7280', fontFamily: 'Vazirmatn_500Medium' },
   drawerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.3)' },
