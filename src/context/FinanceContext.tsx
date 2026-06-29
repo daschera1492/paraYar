@@ -204,14 +204,19 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const now = new Date();
     const s = gregorianToShamsi(now.getFullYear(), now.getMonth() + 1, now.getDate());
     const todayOrdinal = s.year * 10000 + s.month * 100 + s.day;
+    let dueOrdinal: number;
     if (r.type === 'monthly') {
-      const dueOrdinal = s.year * 10000 + s.month * 100 + r.dueDate;
-      return todayOrdinal >= dueOrdinal;
+      dueOrdinal = s.year * 10000 + s.month * 100 + r.dueDate;
     } else {
       if (!r.dueYear || !r.dueMonth) return false;
-      const dueOrdinal = r.dueYear * 10000 + r.dueMonth * 100 + r.dueDate;
-      return todayOrdinal >= dueOrdinal;
+      dueOrdinal = r.dueYear * 10000 + r.dueMonth * 100 + r.dueDate;
     }
+    if (todayOrdinal !== dueOrdinal) return false;
+    if (r.completed && r.lastCompletedShamsi) {
+      const currentMonth = `${s.year}-${String(s.month).padStart(2, '0')}`;
+      if (r.lastCompletedShamsi === currentMonth) return false;
+    }
+    return true;
   }
 
   const addTransaction = useCallback((tx: Omit<Transaction, 'id'>) => {
@@ -264,8 +269,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const completeReminder = useCallback((id: string) => {
+    const now = new Date();
+    const s = gregorianToShamsi(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const shamsiMonth = `${s.year}-${String(s.month).padStart(2, '0')}`;
     setReminders(prev =>
-      prev.map(r => r.id === id ? { ...r, completed: !r.completed } : r)
+      prev.map(r => r.id === id ? { ...r, completed: true, lastCompletedShamsi: shamsiMonth } : r)
     );
   }, []);
 

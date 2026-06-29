@@ -70,6 +70,7 @@ export interface Reminder {
   isActive: boolean;
   notificationInterval: number;
   completed?: boolean;
+  lastCompletedShamsi?: string;
 }
 
 export interface SavingsGoal {

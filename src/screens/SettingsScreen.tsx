@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Modal, Pressable, Animated,
+  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Modal, Pressable,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -28,13 +28,14 @@ const iconMap: Record<string, any> = {
   'user-plus': 'user-plus', 'help-circle': 'help-circle', save: 'save',
 };
 
-type SettingTab = 'profile' | 'budgets' | 'categories' | 'backup' | 'goals' | 'debts' | 'security' | 'reminders';
+type SettingTab = 'profile' | 'budgets' | 'categories' | 'backup' | 'goals' | 'debts' | 'security';
 
 interface SettingsScreenProps {
   onNavigateTo?: (view: string) => void;
+  initialTab?: SettingTab;
 }
 
-export default function SettingsScreen({ onNavigateTo }: SettingsScreenProps) {
+export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScreenProps) {
   const {
     budgets, setCategoryBudget, categories, addCategory, updateCategory, deleteCategory,
     userProfile, updateUserProfile, getBackupData, importBackup,
@@ -44,35 +45,11 @@ export default function SettingsScreen({ onNavigateTo }: SettingsScreenProps) {
     appLock, setAppLock, accounts,
   } = useFinance();
 
-  const [activeTab, setActiveTab] = useState<SettingTab>('profile');
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const drawerAnim = useRef(new Animated.Value(300)).current;
-  const overlayAnim = useRef(new Animated.Value(0)).current;
+  const [activeTab, setActiveTab] = useState<SettingTab>(initialTab || 'profile');
 
   useEffect(() => {
-    if (drawerOpen) {
-      Animated.parallel([
-        Animated.timing(drawerAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
-        Animated.timing(overlayAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(drawerAnim, { toValue: 300, duration: 200, useNativeDriver: true }),
-        Animated.timing(overlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [drawerOpen]);
-
-  const closeDrawer = () => setDrawerOpen(false);
-  const selectTab = (tab: SettingTab) => {
-    if (tab === 'reminders') {
-      closeDrawer();
-      onNavigateTo?.('reminders');
-      return;
-    }
-    setActiveTab(tab);
-    closeDrawer();
-  };
+    if (initialTab) setActiveTab(initialTab);
+  }, [initialTab]);
 
   const [catType, setCatType] = useState<TransactionType>('expense');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -261,17 +238,6 @@ export default function SettingsScreen({ onNavigateTo }: SettingsScreenProps) {
     setDebtDueYear('');
     setDebtDueDay('');
   };
-
-  const tabs: { key: SettingTab; label: string; icon: string }[] = [
-    { key: 'profile', label: 'پروفایل', icon: 'user' },
-    { key: 'budgets', label: 'بودجه', icon: 'pie-chart' },
-    { key: 'categories', label: 'دسته‌ها', icon: 'grid' },
-    { key: 'goals', label: 'اهداف', icon: 'flag' },
-    { key: 'debts', label: 'بدهی‌ها', icon: 'users' },
-    { key: 'reminders', label: 'یادآورها', icon: 'bell' },
-    { key: 'backup', label: 'پشتیبان', icon: 'database' },
-    { key: 'security', label: 'امنیت', icon: 'lock' },
-  ];
 
   const renderProfileTab = () => (
     <View style={{ gap: 20 }}>
@@ -810,12 +776,29 @@ export default function SettingsScreen({ onNavigateTo }: SettingsScreenProps) {
     <View style={{ flex: 1, backgroundColor: '#f1f5f9' }}>
       <View style={styles.settingsHeader}>
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.menuBtn} onPress={() => setDrawerOpen(true)}>
-            <Feather name="menu" size={22} color="#1f2937" />
-          </TouchableOpacity>
+          <View style={{ width: 40 }} />
           <Text style={{ fontSize: 20, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937' }}>تنظیمات</Text>
           <View style={{ width: 40 }} />
         </View>
+      </View>
+
+      <View style={styles.tabRow}>
+        {[
+          { key: 'profile', label: 'پروفایل', icon: 'user' },
+          { key: 'budgets', label: 'بودجه', icon: 'pie-chart' },
+          { key: 'categories', label: 'دسته‌ها', icon: 'grid' },
+          { key: 'goals', label: 'اهداف', icon: 'flag' },
+          { key: 'debts', label: 'بدهی‌ها', icon: 'users' },
+          { key: 'backup', label: 'پشتیبان', icon: 'database' },
+          { key: 'security', label: 'امنیت', icon: 'lock' },
+        ].map(tab => (
+          <TouchableOpacity key={tab.key}
+            style={[styles.tabBtn, activeTab === tab.key && styles.tabBtnActive]}
+            onPress={() => setActiveTab(tab.key)}>
+            <Feather name={tab.icon as any} size={16} color={activeTab === tab.key ? '#4f46e5' : '#9ca3af'} />
+            <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>{tab.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24, paddingBottom: 140 }}>
@@ -829,39 +812,6 @@ export default function SettingsScreen({ onNavigateTo }: SettingsScreenProps) {
       </ScrollView>
 
       {isAddingCat && renderAddCategoryModal()}
-
-      <Modal visible={drawerOpen} transparent animationType="none" onRequestClose={closeDrawer}>
-        <View style={{ flex: 1 }}>
-          <Animated.View style={[styles.drawerOverlay, { opacity: overlayAnim }]}>
-            <Pressable style={{ flex: 1 }} onPress={closeDrawer} />
-          </Animated.View>
-          <Animated.View style={[styles.drawerPanel, { transform: [{ translateX: drawerAnim }] }]}>
-            <View style={styles.drawerHeader}>
-              <Text style={styles.drawerTitle}>بخش‌های تنظیمات</Text>
-              <Pressable onPress={closeDrawer} style={styles.drawerClose}>
-                <Feather name="x" size={22} color="#6b7280" />
-              </Pressable>
-            </View>
-            <ScrollView>
-              {tabs.map(tab => {
-                const isActive = activeTab === tab.key;
-                return (
-                  <Pressable key={tab.key} style={[styles.drawerItem, isActive && styles.drawerItemActive]}
-                    onPress={() => selectTab(tab.key)}>
-                    <View style={[styles.drawerItemIcon, isActive && { backgroundColor: '#4f46e5' }]}>
-                      <Feather name={tab.icon as any} size={20} color={isActive ? '#fff' : '#6b7280'} />
-                    </View>
-                    <Text style={[styles.drawerItemLabel, isActive && styles.drawerItemLabelActive]}>
-                      {tab.label}
-                    </Text>
-                    {isActive && <Feather name="check" size={18} color="#4f46e5" />}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </Animated.View>
-        </View>
-      </Modal>
     </View>
   );
 
@@ -935,18 +885,21 @@ export default function SettingsScreen({ onNavigateTo }: SettingsScreenProps) {
 
 const styles = StyleSheet.create({
   settingsHeader: { backgroundColor: '#f1f5f9', paddingTop: 48, paddingHorizontal: 24, paddingBottom: 8},
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  menuBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  drawerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.3)' },
-  drawerPanel: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 280, backgroundColor: '#fff', borderTopRightRadius: 0, borderBottomRightRadius: 0, elevation: 20, shadowColor: '#000', shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.15, shadowRadius: 20 },
-  drawerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingTop: 56, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  drawerTitle: { fontSize: 18, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937' },
-  drawerClose: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
-  drawerItem: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingHorizontal: 24, borderBottomWidth: 1, borderBottomColor: '#f9fafb' },
-  drawerItemActive: { backgroundColor: 'rgba(79,70,229,0.06)' },
-  drawerItemIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
-  drawerItemLabel: { flex: 1, fontSize: 15, fontFamily: 'Vazirmatn_700Bold', color: '#374151' },
-  drawerItemLabelActive: { color: '#4f46e5' },
+  headerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+
+  tabRow: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 4,
+    paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: '#f1f5f9',
+  },
+  tabBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 10, backgroundColor: '#fff',
+  },
+  tabBtnActive: { backgroundColor: '#eef2ff' },
+  tabLabel: { fontSize: 10, fontFamily: 'Vazirmatn_500Medium', color: '#9ca3af' },
+  tabLabelActive: { color: '#4f46e5', fontFamily: 'Vazirmatn_700Bold' },
 
   avatarSection: { alignItems: 'center', gap: 12, marginBottom: 8},
   avatarBig: { width: 96, height: 96, borderRadius: 48, backgroundColor: 'rgba(219,234,254,0.5)', alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: '#fff'},

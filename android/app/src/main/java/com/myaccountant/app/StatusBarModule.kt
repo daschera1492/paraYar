@@ -58,16 +58,41 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         createChannel(context)
 
+        val rlm = "\u200F"
+        val rle = "\u202B"
+        val pdf = "\u202C"
+
         val reminderLines = if (lastReminders.isEmpty()) "یادآوری وجود ندارد" else lastReminders.joinToString("\n")
 
-        val contentText = """
-📅 $lastDateText
-📈 دریافتی: $lastIncome تومان
-📉 پرداختی: $lastExpense تومان
+        val contentText = buildString {
+            append(rle)
+            append(rlm)
+            append("📅 $lastDateText")
+            append(pdf)
+            append("\n")
+            append(rle)
+            append(rlm)
+            append("📈 دریافتی: $lastIncome تومان")
+            append(pdf)
+            append("\n")
+            append(rle)
+            append(rlm)
+            append("📉 پرداختی: $lastExpense تومان")
+            append(pdf)
+            append("\n\n")
+            append(rle)
+            append(rlm)
+            append("🔔 یادآورها:")
+            append(pdf)
+            append("\n")
+            append(rle)
+            append(rlm)
+            append(reminderLines)
+            append(pdf)
+        }
 
-🔔 یادآورها:
-$reminderLines
-        """.trimIndent()
+        val titleText = "${rle}${rlm}📊 $lastDateText$pdf"
+        val summaryText = "${rle}${rlm}دریافتی: $lastIncome | پرداختی: $lastExpense$pdf"
 
         val openIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -79,8 +104,8 @@ $reminderLines
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
-            .setContentTitle("📊 $lastDateText")
-            .setContentText("دریافتی: $lastIncome | پرداختی: $lastExpense")
+            .setContentTitle(titleText)
+            .setContentText(summaryText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setOngoing(true)

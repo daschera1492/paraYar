@@ -21,20 +21,20 @@ const iconMap: Record<string, any> = {
 
 interface HomeScreenProps {
   onEdit: () => void;
+  onToggleDrawer: () => void;
 }
 
-export default function HomeScreen({ onEdit }: HomeScreenProps) {
+export default function HomeScreen({ onEdit, onToggleDrawer }: HomeScreenProps) {
   const {
     totalBalance, monthlyIncome, monthlyExpense, transactions, budgets,
     deleteTransaction, setEditingTransactionId, categories, userProfile,
-    reminders, accounts, getAccountBalance, savingsGoals,
+    reminders, accounts, getAccountBalance, savingsGoals, completeReminder,
   } = useFinance();
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [budgetDetail, setBudgetDetail] = useState<{ id: string; name: string; color: string } | null>(null);
   const [showCalendarPicker, setShowCalendarPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dismissedReminders, setDismissedReminders] = useState<string[]>([]);
   const calendarDays = useMemo(() => generateLast14Days(), []);
   const categoryExpenses = useMemo(() => {
     const now = new Date();
@@ -163,9 +163,9 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
           <Text style={styles.greeting}>سلام، روز بخیر</Text>
           <Text style={styles.userName}>{userProfile.name} عزیز</Text>
         </View>
-        <View style={styles.avatar}>
-          <Feather name="user" size={24} color="#2563eb" />
-        </View>
+        <TouchableOpacity style={styles.menuBtn} onPress={onToggleDrawer} activeOpacity={0.7}>
+          <Feather name="menu" size={24} color="#2563eb" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.balanceCard}>
@@ -291,13 +291,13 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
         </View>
       )}
 
-      {overdueReminders.filter(r => !dismissedReminders.includes(r.id)).length > 0 && (
+      {overdueReminders.length > 0 && (
         <View style={styles.overdueSection}>
           <View style={styles.overdueHeader}>
             <Feather name="alert-triangle" size={16} color="#ef4444" />
             <Text style={styles.overdueTitle}>یادآورهای سررسید شده</Text>
           </View>
-          {overdueReminders.filter(r => !dismissedReminders.includes(r.id)).map(r => (
+          {overdueReminders.map(r => (
             <View key={r.id} style={styles.overdueCard}>
               <View style={styles.overdueIconBox}>
                 <Feather name="bell" size={20} color="#ef4444" />
@@ -310,7 +310,7 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
                 <Text style={styles.overdueAmount}>{r.amount.toLocaleString('en-US')} تومان</Text>
               ) : null}
               <TouchableOpacity style={styles.overduePaidBtn}
-                onPress={() => setDismissedReminders(prev => [...prev, r.id])}>
+                onPress={() => completeReminder(r.id)}>
                 <Feather name="check" size={14} color="#fff" />
                 <Text style={styles.overduePaidText}>پرداخت شد</Text>
               </TouchableOpacity>
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
   header: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, marginTop: 8},
   greeting: { fontSize: 13, color: '#6b7280', fontFamily: 'Vazirmatn_500Medium' },
   userName: { fontSize: 20, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937' },
-  avatar: { fontFamily: 'Vazirmatn_400Regular', width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(219,234,254,0.5)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff'},
+  menuBtn: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(219,234,254,0.5)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#bfdbfe'},
 
   balanceCard: { fontFamily: 'Vazirmatn_400Regular', backgroundColor: '#4f46e5', borderRadius: 32, padding: 24, marginBottom: 24,
     shadowColor: '#3b82f6', shadowOffset: { width: 0, height: 4}, shadowOpacity: 0.2, shadowRadius: 8, elevation: 8,

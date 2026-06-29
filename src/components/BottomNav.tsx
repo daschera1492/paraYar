@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
-export type ViewName = 'home' | 'accounts' | 'reports' | 'add' | 'transfer' | 'settings' | 'reminders';
+export type ViewName = 'home' | 'accounts' | 'reports' | 'add' | 'transfer' | 'profile' | 'reminders';
 
 interface BottomNavProps {
   currentView: ViewName;
@@ -38,9 +38,9 @@ export default function BottomNav({ currentView, onChange, onTransfer }: BottomN
           <Text style={[styles.label, currentView === 'reports' && styles.activeLabel]}>گزارش‌ها</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tab} onPress={() => onChange('settings')}>
-          <Feather name="settings" size={22} color={currentView === 'settings' ? '#2563eb' : '#9ca3af'} />
-          <Text style={[styles.label, currentView === 'settings' && styles.activeLabel]}>بیشتر</Text>
+        <TouchableOpacity style={styles.tab} onPress={() => onChange('profile')}>
+          <Feather name="user" size={22} color={currentView === 'profile' ? '#2563eb' : '#9ca3af'} />
+          <Text style={[styles.label, currentView === 'profile' && styles.activeLabel]}>پروفایل</Text>
         </TouchableOpacity>
       </View>
     </View>
