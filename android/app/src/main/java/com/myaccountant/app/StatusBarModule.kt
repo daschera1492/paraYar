@@ -53,46 +53,61 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         updateNotification()
     }
 
+    private fun toPersianDigits(str: String): String {
+        val sb = StringBuilder(str)
+        for (i in sb.indices) {
+            when (sb[i]) {
+                '0' -> sb[i] = '\u06F0'
+                '1' -> sb[i] = '\u06F1'
+                '2' -> sb[i] = '\u06F2'
+                '3' -> sb[i] = '\u06F3'
+                '4' -> sb[i] = '\u06F4'
+                '5' -> sb[i] = '\u06F5'
+                '6' -> sb[i] = '\u06F6'
+                '7' -> sb[i] = '\u06F7'
+                '8' -> sb[i] = '\u06F8'
+                '9' -> sb[i] = '\u06F9'
+            }
+        }
+        return sb.toString()
+    }
+
+    private fun rtlLine(text: String): String {
+        val rlm = "\u200F"
+        val rle = "\u202B"
+        val pdf = "\u202C"
+        val persianText = toPersianDigits(text)
+        return "$rle${rlm}$persianText$pdf"
+    }
+
     private fun updateNotification() {
         val context = currentActivity ?: return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         createChannel(context)
 
-        val rlm = "\u200F"
-        val rle = "\u202B"
-        val pdf = "\u202C"
-
-        val reminderLines = if (lastReminders.isEmpty()) "یادآوری وجود ندارد" else lastReminders.joinToString("\n")
+        val datePersian = toPersianDigits(lastDateText)
+        val incomePersian = toPersianDigits(lastIncome)
+        val expensePersian = toPersianDigits(lastExpense)
 
         val contentText = buildString {
-            append(rle)
-            append(rlm)
-            append("📅 $lastDateText")
-            append(pdf)
+            append(rtlLine("📅 $datePersian"))
             append("\n")
-            append(rle)
-            append(rlm)
-            append("📈 دریافتی: $lastIncome تومان")
-            append(pdf)
+            append(rtlLine("📈 دریافتی: $incomePersian تومان"))
             append("\n")
-            append(rle)
-            append(rlm)
-            append("📉 پرداختی: $lastExpense تومان")
-            append(pdf)
-            append("\n\n")
-            append(rle)
-            append(rlm)
-            append("🔔 یادآورها:")
-            append(pdf)
-            append("\n")
-            append(rle)
-            append(rlm)
-            append(reminderLines)
-            append(pdf)
+            append(rtlLine("📉 پرداختی: $expensePersian تومان"))
+            if (lastReminders.isNotEmpty()) {
+                append("\n\n")
+                append(rtlLine("🔔 یادآورها:"))
+                for (rem in lastReminders) {
+                    val remPersian = toPersianDigits(rem)
+                    append("\n")
+                    append(rtlLine(remPersian))
+                }
+            }
         }
 
-        val titleText = "${rle}${rlm}📊 $lastDateText$pdf"
-        val summaryText = "${rle}${rlm}دریافتی: $lastIncome | پرداختی: $lastExpense$pdf"
+        val titleText = rtlLine("📊 $datePersian")
+        val summaryText = rtlLine("دریافتی: $incomePersian | پرداختی: $expensePersian")
 
         val openIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -165,7 +180,6 @@ class StatusBarService : Service() {
 
         fun updateNotification(notification: Notification) {
             currentNotification = notification
-            // The service will pick up the latest notification on next startCommand
         }
     }
 }

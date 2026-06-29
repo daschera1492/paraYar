@@ -30,6 +30,7 @@ interface FinanceContextType {
   deleteReminder: (id: string) => void;
   toggleReminder: (id: string) => void;
   completeReminder: (id: string) => void;
+  isReminderDue: (r: Reminder) => boolean;
   editingTransactionId: string | null;
   setEditingTransactionId: (id: string | null) => void;
   getBackupData: () => BackupData;
@@ -452,7 +453,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     budgets, setCategoryBudget,
     categories, addCategory, updateCategory, deleteCategory,
     userProfile, updateUserProfile,
-    reminders, addReminder, updateReminder, deleteReminder, toggleReminder, completeReminder,
+    reminders, addReminder, updateReminder, deleteReminder, toggleReminder, completeReminder, isReminderDue,
     editingTransactionId, setEditingTransactionId,
     getBackupData, importBackup, isLoaded,
     accounts, addAccount, updateAccount, deleteAccount, getAccountBalance,

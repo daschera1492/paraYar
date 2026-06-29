@@ -28,7 +28,7 @@ export default function HomeScreen({ onEdit, onToggleDrawer }: HomeScreenProps) 
   const {
     totalBalance, monthlyIncome, monthlyExpense, transactions, budgets,
     deleteTransaction, setEditingTransactionId, categories, userProfile,
-    reminders, accounts, getAccountBalance, savingsGoals, completeReminder,
+    reminders, accounts, getAccountBalance, savingsGoals, completeReminder, isReminderDue,
   } = useFinance();
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -109,20 +109,6 @@ export default function HomeScreen({ onEdit, onToggleDrawer }: HomeScreenProps) 
 
   const isToday = isSameDay(selectedDate, new Date());
   const selectedDateFull = selectedDate ? getPersianDate(selectedDate).full : '';
-
-  function isReminderDue(r: Reminder): boolean {
-    const now = new Date();
-    const s = gregorianToShamsi(now.getFullYear(), now.getMonth() + 1, now.getDate());
-    const todayOrdinal = s.year * 10000 + s.month * 100 + s.day;
-    if (r.type === 'monthly') {
-      const dueOrdinal = s.year * 10000 + s.month * 100 + r.dueDate;
-      return todayOrdinal >= dueOrdinal;
-    } else {
-      if (!r.dueYear || !r.dueMonth) return false;
-      const dueOrdinal = r.dueYear * 10000 + r.dueMonth * 100 + r.dueDate;
-      return todayOrdinal >= dueOrdinal;
-    }
-  }
 
   const overdueReminders = reminders.filter(r => r.isActive && isReminderDue(r));
 
