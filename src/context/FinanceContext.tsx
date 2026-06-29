@@ -5,7 +5,8 @@ import {
   Transaction, Reminder, Category, UserProfile, BackupData, DEFAULT_CATEGORIES,
   Account, RecurringTransaction, SavingsGoal, Debt, AppLock, DEFAULT_ACCOUNTS,
 } from '../types';
-import { generateId } from '../utils';
+import { generateId, gregorianToShamsi, SHAMSI_MONTH_NAMES, formatCurrency } from '../utils';
+import { updateStatusBar } from '../services/StatusBarService';
 
 interface FinanceContextType {
   transactions: Transaction[];
@@ -25,6 +26,7 @@ interface FinanceContextType {
   setCategoryBudget: (categoryId: string, amount: number) => void;
   reminders: Reminder[];
   addReminder: (reminder: Omit<Reminder, 'id'>) => void;
+  updateReminder: (id: string, reminder: Omit<Reminder, 'id'>) => void;
   deleteReminder: (id: string) => void;
   toggleReminder: (id: string) => void;
   completeReminder: (id: string) => void;
@@ -173,6 +175,45 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [transactions, isLoaded]);
 
+  useEffect(() => {
+    if (!isLoaded) return;
+    const now = new Date();
+    const s = gregorianToShamsi(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const dateText = `${s.day} ${SHAMSI_MONTH_NAMES[s.month - 1]} ${s.year}`;
+    const todayInc = transactions.filter(t => {
+      const d = new Date(t.date);
+      return t.type === 'income' && d.toDateString() === now.toDateString();
+    }).reduce((sum, t) => sum + t.amount, 0);
+    const todayExp = transactions.filter(t => {
+      const d = new Date(t.date);
+      return t.type === 'expense' && d.toDateString() === now.toDateString();
+    }).reduce((sum, t) => sum + t.amount, 0);
+    const activeReminders = reminders
+      .filter(r => r.isActive && isReminderDue(r))
+      .map(r => `${r.title}${r.amount ? ` - ${r.amount.toLocaleString()} تومان` : ''}`);
+    updateStatusBar({
+      dateText,
+      dayNum: String(s.day),
+      income: todayInc.toLocaleString(),
+      expense: todayExp.toLocaleString(),
+      reminders: activeReminders.length > 0 ? activeReminders.slice(0, 5) : [],
+    });
+  }, [transactions, reminders, isLoaded]);
+
+  function isReminderDue(r: Reminder): boolean {
+    const now = new Date();
+    const s = gregorianToShamsi(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const todayOrdinal = s.year * 10000 + s.month * 100 + s.day;
+    if (r.type === 'monthly') {
+      const dueOrdinal = s.year * 10000 + s.month * 100 + r.dueDate;
+      return todayOrdinal >= dueOrdinal;
+    } else {
+      if (!r.dueYear || !r.dueMonth) return false;
+      const dueOrdinal = r.dueYear * 10000 + r.dueMonth * 100 + r.dueDate;
+      return todayOrdinal >= dueOrdinal;
+    }
+  }
+
   const addTransaction = useCallback((tx: Omit<Transaction, 'id'>) => {
     const newTx: Transaction = { ...tx, id: generateId() };
     setTransactions(prev => sortByDateDesc([...prev, newTx]));
@@ -208,6 +249,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const addReminder = useCallback((r: Omit<Reminder, 'id'>) => {
     setReminders(prev => [...prev, { ...r, id: generateId() }]);
+  }, []);
+
+  const updateReminder = useCallback((id: string, r: Omit<Reminder, 'id'>) => {
+    setReminders(prev => prev.map(x => x.id === id ? { ...r, id } : x));
   }, []);
 
   const deleteReminder = useCallback((id: string) => {
@@ -399,7 +444,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     budgets, setCategoryBudget,
     categories, addCategory, updateCategory, deleteCategory,
     userProfile, updateUserProfile,
-    reminders, addReminder, deleteReminder, toggleReminder, completeReminder,
+    reminders, addReminder, updateReminder, deleteReminder, toggleReminder, completeReminder,
     editingTransactionId, setEditingTransactionId,
     getBackupData, importBackup, isLoaded,
     accounts, addAccount, updateAccount, deleteAccount, getAccountBalance,

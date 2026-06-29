@@ -2,7 +2,8 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, main ]
+    tags: [ 'v*' ]
   workflow_dispatch:
 
 jobs:
@@ -27,21 +28,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install NDK 27.3
+      - name: Install NDK
         run: echo "y" | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;27.3.13750724" --sdk_root=${ANDROID_HOME}
 
       - name: Create local.properties
         run: |
           mkdir -p android
-          cat > android/local.properties << 'EOF'
-          sdk.dir=$ANDROID_HOME
-          cmake.dir=$ANDROID_HOME/cmake/3.31.5
-          EOF
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
       - name: Build APK
         run: |
           cd android
-          export CMAKE_VERSION=3.31.5
           ./gradlew assembleRelease
 
       - name: Upload APKs
@@ -50,16 +47,8 @@ jobs:
           name: android-apks
           path: android/app/build/outputs/apk/release/*.apk
 
-      - name: Get version
-        id: version
-        run: |
-          echo "version=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
-          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/master'
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          tag_name: v${{ steps.version.outputs.version }}-${{ steps.version.outputs.sha }}
-          name: Release v${{ steps.version.outputs.version }}
           files: android/app/build/outputs/apk/release/*.apk

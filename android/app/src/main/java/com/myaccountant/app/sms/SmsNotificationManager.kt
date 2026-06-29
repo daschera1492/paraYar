@@ -47,7 +47,6 @@ object SmsNotificationManager {
         try {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID + (timestamp % 100).toInt(), notification)
         } catch (e: SecurityException) {
-            // Notification permission not granted on Android 13+
         }
     }
 
@@ -55,10 +54,10 @@ object SmsNotificationManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "پیامک‌های بانکی",
+                "پیامک\u200Cهای بانکی",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "اعلان‌های پیامک دریافتی از بانک‌ها"
+                description = "اعلان\u200Cهای پیامک دریافتی از بانک\u200Cها"
             }
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)

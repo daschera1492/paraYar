@@ -27,8 +27,6 @@ class SmsReceiver : BroadcastReceiver() {
             try {
                 SmsNotificationManager.show(context, parsed, timestamp)
             } catch (e: Exception) {
-                // Silently fail - notification may not be shown
-                // on newer Android versions without permission
             }
         }
     }

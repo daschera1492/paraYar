@@ -1,9 +1,5 @@
 package com.myaccountant.app.sms
 
-import java.text.DecimalFormat
-import java.text.NumberFormat
-import java.util.Locale
-
 object SmsParser {
 
     fun parse(message: String, bankName: String, sender: String?, timestamp: Long): SmsData? {

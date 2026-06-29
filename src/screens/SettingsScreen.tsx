@@ -45,7 +45,7 @@ export default function SettingsScreen({ onNavigateTo }: SettingsScreenProps) {
   } = useFinance();
 
   const [activeTab, setActiveTab] = useState<SettingTab>('profile');
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerAnim = useRef(new Animated.Value(300)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
 
@@ -810,7 +810,11 @@ export default function SettingsScreen({ onNavigateTo }: SettingsScreenProps) {
     <View style={{ flex: 1, backgroundColor: '#f1f5f9' }}>
       <View style={styles.settingsHeader}>
         <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.menuBtn} onPress={() => setDrawerOpen(true)}>
+            <Feather name="menu" size={22} color="#1f2937" />
+          </TouchableOpacity>
           <Text style={{ fontSize: 20, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937' }}>تنظیمات</Text>
+          <View style={{ width: 40 }} />
         </View>
       </View>
 
@@ -932,6 +936,7 @@ export default function SettingsScreen({ onNavigateTo }: SettingsScreenProps) {
 const styles = StyleSheet.create({
   settingsHeader: { backgroundColor: '#f1f5f9', paddingTop: 48, paddingHorizontal: 24, paddingBottom: 8},
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  menuBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   drawerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.3)' },
   drawerPanel: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 280, backgroundColor: '#fff', borderTopRightRadius: 0, borderBottomRightRadius: 0, elevation: 20, shadowColor: '#000', shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.15, shadowRadius: 20 },
   drawerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingTop: 56, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },

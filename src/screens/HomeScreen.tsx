@@ -34,6 +34,7 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
   const [budgetDetail, setBudgetDetail] = useState<{ id: string; name: string; color: string } | null>(null);
   const [showCalendarPicker, setShowCalendarPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [dismissedReminders, setDismissedReminders] = useState<string[]>([]);
   const calendarDays = useMemo(() => generateLast14Days(), []);
   const categoryExpenses = useMemo(() => {
     const now = new Date();
@@ -123,7 +124,7 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
     }
   }
 
-  const overdueReminders = reminders.filter(r => r.isActive && !r.completed && isReminderDue(r));
+  const overdueReminders = reminders.filter(r => r.isActive && isReminderDue(r));
 
   const reminderLabel = (r: Reminder) => {
     if (r.type === 'monthly') return `روز ${r.dueDate} هر ماه`;
@@ -290,13 +291,13 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
         </View>
       )}
 
-      {overdueReminders.length > 0 && (
+      {overdueReminders.filter(r => !dismissedReminders.includes(r.id)).length > 0 && (
         <View style={styles.overdueSection}>
           <View style={styles.overdueHeader}>
             <Feather name="alert-triangle" size={16} color="#ef4444" />
             <Text style={styles.overdueTitle}>یادآورهای سررسید شده</Text>
           </View>
-          {overdueReminders.map(r => (
+          {overdueReminders.filter(r => !dismissedReminders.includes(r.id)).map(r => (
             <View key={r.id} style={styles.overdueCard}>
               <View style={styles.overdueIconBox}>
                 <Feather name="bell" size={20} color="#ef4444" />
@@ -308,6 +309,11 @@ export default function HomeScreen({ onEdit }: HomeScreenProps) {
               {r.amount ? (
                 <Text style={styles.overdueAmount}>{r.amount.toLocaleString('en-US')} تومان</Text>
               ) : null}
+              <TouchableOpacity style={styles.overduePaidBtn}
+                onPress={() => setDismissedReminders(prev => [...prev, r.id])}>
+                <Feather name="check" size={14} color="#fff" />
+                <Text style={styles.overduePaidText}>پرداخت شد</Text>
+              </TouchableOpacity>
             </View>
           ))}
         </View>
@@ -582,6 +588,8 @@ const styles = StyleSheet.create({
   overdueName: { fontSize: 13, fontFamily: 'Vazirmatn_700Bold', color: '#991b1b' },
   overdueMeta: { fontSize: 11, fontFamily: 'Vazirmatn_500Medium', color: '#b91c1c', marginTop: 2 },
   overdueAmount: { fontSize: 12, fontFamily: 'Vazirmatn_700Bold', color: '#991b1b' },
+  overduePaidBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#059669', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  overduePaidText: { fontSize: 11, fontFamily: 'Vazirmatn_700Bold', color: '#fff' },
 
   bdOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
   bdContainer: { backgroundColor: '#f8fafc', borderTopLeftRadius: 32, borderTopRightRadius: 32, maxHeight: '85%', minHeight: '50%' },

@@ -12,9 +12,10 @@ dist/
 web-build/
 .env
 .env.local
-android/build.log
-android/build.pid
+android/.cxx/
+android/build/
+android/local.properties
 android/build*.log
 android/build*.ps1
-android/build.bat
-android/build_final.log
+android/build*.bat
+android/build*.pid
