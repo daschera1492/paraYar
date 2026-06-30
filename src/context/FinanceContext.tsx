@@ -7,7 +7,7 @@ import {
   StatusBarConfig, DEFAULT_STATUS_BAR_CONFIG,
 } from '../types';
 import { generateId, gregorianToShamsi, SHAMSI_MONTH_NAMES, formatCurrency } from '../utils';
-import { updateStatusBar } from '../services/StatusBarService';
+import { updateStatusBar, startStatusBarService, stopStatusBarService } from '../services/StatusBarService';
 
 interface FinanceContextType {
   transactions: Transaction[];
@@ -187,7 +187,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoaded) return;
-    if (!statusBarConfig.enabled && !statusBarConfig.autoStart) return;
+
     const now = new Date();
     const s = gregorianToShamsi(now.getFullYear(), now.getMonth() + 1, now.getDate());
     const dateText = `${s.day} ${SHAMSI_MONTH_NAMES[s.month - 1]} ${s.year}`;
@@ -202,6 +202,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const activeReminders = reminders
       .filter(r => r.isActive && isReminderDue(r))
       .map(r => `${r.title}${r.amount ? ` - ${r.amount.toLocaleString()} تومان` : ''}`);
+
     updateStatusBar({
       dateText,
       dayNum: String(s.day),
@@ -210,6 +211,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       reminders: activeReminders.length > 0 ? activeReminders.slice(0, 5) : [],
       showDayNumber: statusBarConfig.showDayNumber,
     });
+
+    if (statusBarConfig.enabled || statusBarConfig.autoStart) {
+      startStatusBarService();
+    } else {
+      stopStatusBarService();
+    }
   }, [transactions, reminders, isLoaded, statusBarConfig]);
 
   function isReminderDue(r: Reminder): boolean {

@@ -21,3 +21,13 @@ export function updateStatusBar(data: {
     );
   } catch {}
 }
+
+export function startStatusBarService() {
+  if (Platform.OS !== 'android' || !StatusBarModule) return;
+  try { StatusBarModule.startForegroundService(); } catch {}
+}
+
+export function stopStatusBarService() {
+  if (Platform.OS !== 'android' || !StatusBarModule) return;
+  try { StatusBarModule.stopForegroundService(); } catch {}
+}

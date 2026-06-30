@@ -7,8 +7,13 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.os.Build
 import android.os.IBinder
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -36,6 +41,13 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
                 }
             } catch (_: Exception) {}
         }
+
+        fun stopService(context: Context) {
+            try {
+                val intent = Intent(context, StatusBarService::class.java)
+                context.stopService(intent)
+            } catch (_: Exception) {}
+        }
     }
 
     override fun getName(): String = "StatusBarModule"
@@ -50,7 +62,21 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
                 it.add(reminders.getString(i) ?: "")
             }
         }
-        updateNotification()
+        updateNotification(dayNum)
+    }
+
+    @ReactMethod
+    fun startForegroundService() {
+        val context = currentActivity ?: return
+        startService(context)
+    }
+
+    @ReactMethod
+    fun stopForegroundService() {
+        val context = currentActivity ?: return
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        try { manager.cancel(NOTIFICATION_ID) } catch (_: Exception) {}
+        stopService(context)
     }
 
     private fun toPersianDigits(str: String): String {
@@ -76,11 +102,31 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         val rlm = "\u200F"
         val rle = "\u202B"
         val pdf = "\u202C"
-        val persianText = toPersianDigits(text)
-        return "$rle${rlm}$persianText$pdf"
+        return "$rle${rlm}$text$pdf"
     }
 
-    private fun updateNotification() {
+    private fun createDayNumberBitmap(dayNum: String): Bitmap? {
+        if (dayNum.isEmpty()) return null
+        val size = 120
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#4f46e5")
+            style = Paint.Style.FILL
+        }
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, circlePaint)
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 52f
+            textAlign = Paint.Align.CENTER
+            isFakeBoldText = true
+        }
+        val yPos = size / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
+        canvas.drawText(toPersianDigits(dayNum), size / 2f, yPos, textPaint)
+        return bitmap
+    }
+
+    private fun updateNotification(dayNum: String = "") {
         val context = currentActivity ?: return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         createChannel(context)
@@ -90,14 +136,14 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         val expensePersian = toPersianDigits(lastExpense)
 
         val contentText = buildString {
-            append(rtlLine("📅 $datePersian"))
+            append(rtlLine("\uD83D\uDCC5 $datePersian"))
             append("\n")
-            append(rtlLine("📈 دریافتی: $incomePersian تومان"))
+            append(rtlLine("\uD83D\uDCC8 دریافتی: $incomePersian تومان"))
             append("\n")
-            append(rtlLine("📉 پرداختی: $expensePersian تومان"))
+            append(rtlLine("\uD83D\uDCC9 پرداختی: $expensePersian تومان"))
             if (lastReminders.isNotEmpty()) {
                 append("\n\n")
-                append(rtlLine("🔔 یادآورها:"))
+                append(rtlLine("\uD83D\uDD14 یادآورها:"))
                 for (rem in lastReminders) {
                     val remPersian = toPersianDigits(rem)
                     append("\n")
@@ -106,7 +152,7 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             }
         }
 
-        val titleText = rtlLine("📊 $datePersian")
+        val titleText = rtlLine("\uD83D\uDCCA $datePersian")
         val summaryText = rtlLine("دریافتی: $incomePersian | پرداختی: $expensePersian")
 
         val openIntent = Intent(context, MainActivity::class.java).apply {
@@ -117,8 +163,7 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(titleText)
             .setContentText(summaryText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
@@ -126,8 +171,18 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             .setOngoing(true)
             .setContentIntent(pendingOpenIntent)
             .setShowWhen(true)
-            .build()
 
+        if (dayNum.isNotEmpty()) {
+            val dayBitmap = createDayNumberBitmap(dayNum)
+            if (dayBitmap != null) {
+                builder.setLargeIcon(dayBitmap)
+            }
+            builder.setSmallIcon(android.R.drawable.ic_menu_myplaces)
+        } else {
+            builder.setSmallIcon(android.R.drawable.ic_popup_reminder)
+        }
+
+        val notification = builder.build()
         try {
             manager.notify(NOTIFICATION_ID, notification)
             StatusBarService.updateNotification(notification)
@@ -167,9 +222,9 @@ class StatusBarService : Service() {
             manager.createNotificationChannel(channel)
         }
         return NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setSmallIcon(android.R.drawable.ic_menu_myplaces)
             .setContentTitle("حسابدار من")
-            .setContentText("در حال بروزرسانی...")
+            .setContentText("...")
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .build()
