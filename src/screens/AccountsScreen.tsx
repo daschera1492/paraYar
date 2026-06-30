@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal, TextInput,
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal, TextInput, Alert,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
@@ -89,7 +89,12 @@ export default function AccountsScreen() {
           const iconName = iconMap[acct.icon] || 'wallet';
           return (
             <TouchableOpacity key={acct.id} style={styles.accountCard}
-              onPress={() => openEdit(acct)} onLongPress={() => deleteAccount(acct.id)}>
+              onPress={() => openEdit(acct)} onLongPress={() => {
+                Alert.alert('حذف حساب', `آیا از حذف حساب "${acct.name}" و تمام تراکنش‌های آن اطمینان دارید؟`, [
+                  { text: 'انصراف', style: 'cancel' },
+                  { text: 'حذف', style: 'destructive', onPress: () => deleteAccount(acct.id) },
+                ]);
+              }}>
               <View style={[styles.accountIcon, { backgroundColor: acct.color + '20' }]}>
                 <Feather name={iconName} size={28} color={acct.color} />
               </View>

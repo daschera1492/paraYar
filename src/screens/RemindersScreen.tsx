@@ -5,24 +5,10 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
 import { Reminder } from '../types';
-import { gregorianToShamsi, SHAMSI_MONTH_NAMES } from '../utils';
-
-function isReminderDue(r: Reminder): boolean {
-  const now = new Date();
-  const s = gregorianToShamsi(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  const todayOrdinal = s.year * 10000 + s.month * 100 + s.day;
-  if (r.type === 'monthly') {
-    const dueOrdinal = s.year * 10000 + s.month * 100 + r.dueDate;
-    return todayOrdinal >= dueOrdinal;
-  } else {
-    if (!r.dueYear || !r.dueMonth) return false;
-    const dueOrdinal = r.dueYear * 10000 + r.dueMonth * 100 + r.dueDate;
-    return todayOrdinal >= dueOrdinal;
-  }
-}
+import { gregorianToShamsi, SHAMSI_MONTH_NAMES, isShamsiLeapYear } from '../utils';
 
 export default function RemindersScreen() {
-  const { reminders, addReminder, updateReminder, deleteReminder, toggleReminder } = useFinance();
+  const { reminders, addReminder, updateReminder, deleteReminder, toggleReminder, isReminderDue } = useFinance();
   const [isAdding, setIsAdding] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [title, setTitle] = useState('');
@@ -91,7 +77,7 @@ export default function RemindersScreen() {
     setShowDatePicker(false);
   };
 
-  const maxDay = dpMonth <= 6 ? 31 : dpMonth <= 11 ? 30 : 29;
+  const maxDay = dpMonth <= 6 ? 31 : dpMonth <= 11 ? 30 : isShamsiLeapYear(dpYear) ? 30 : 29;
   const safeDay = Math.min(dpDay, maxDay);
 
   const reminderLabel = (r: Reminder) => {

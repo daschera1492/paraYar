@@ -225,3 +225,9 @@ export function calculateGoalProgress(current: number, target: number): number {
   if (target <= 0) return 0;
   return Math.min(Math.round((current / target) * 100), 100);
 }
+
+export function isShamsiLeapYear(year: number): boolean {
+  const remains = (year + 12) % 33;
+  const leapYears = [1, 5, 9, 13, 17, 22, 26, 30];
+  return leapYears.includes(remains);
+}

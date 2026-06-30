@@ -30,7 +30,7 @@ import { getPendingSms } from './src/services/SmsBridge';
 
 type ViewName = 'home' | 'accounts' | 'reports' | 'add' | 'transfer' | 'profile' | 'reminders';
 
-type SettingTab = 'profile' | 'budgets' | 'categories' | 'backup' | 'goals' | 'debts' | 'security' | 'reminders';
+type SettingTab = 'profile' | 'budgets' | 'categories' | 'backup' | 'goals' | 'debts' | 'security' | 'reminders' | 'statusbar';
 
 const DRAWER_TABS: { key: SettingTab; label: string; icon: string }[] = [
   { key: 'profile', label: 'پروفایل', icon: 'user' },
@@ -41,6 +41,7 @@ const DRAWER_TABS: { key: SettingTab; label: string; icon: string }[] = [
   { key: 'reminders', label: 'یادآورها', icon: 'bell' },
   { key: 'backup', label: 'پشتیبان', icon: 'database' },
   { key: 'security', label: 'امنیت', icon: 'lock' },
+  { key: 'statusbar', label: 'نوار وضعیت', icon: 'smartphone' },
 ];
 
 const SECTION_TITLES: Record<string, string> = {
@@ -51,12 +52,12 @@ const SECTION_TITLES: Record<string, string> = {
   debts: 'بدهی‌ها',
   backup: 'پشتیبان',
   security: 'امنیت',
+  statusbar: 'نوار وضعیت',
 };
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<ViewName>('home');
   const [settingsTab, setSettingsTab] = useState<SettingTab>('profile');
-  const [settingsKey, setSettingsKey] = useState(0);
   const [smsData, setSmsData] = useState<{ amount: number; type: 'income' | 'expense'; bankName: string; cardSuffix: string } | null>(null);
   const { isLoaded, appLock, userProfile } = useFinance();
   const [userUnlocked, setUserUnlocked] = useState(false);
@@ -92,7 +93,6 @@ function AppContent() {
       setCurrentView('reminders');
     } else {
       setSettingsTab(tab);
-      setSettingsKey(prev => prev + 1);
       setCurrentView('profile');
     }
   }, [closeDrawer]);
@@ -171,7 +171,7 @@ function AppContent() {
         {currentView === 'accounts' && <AccountsScreen />}
         {currentView === 'reports' && <ReportsScreen />}
         {currentView === 'transfer' && <TransferScreen onClose={() => setCurrentView('home')} />}
-        {currentView === 'profile' && <SettingsScreen key={settingsKey} initialTab={settingsTab} />}
+        {currentView === 'profile' && <SettingsScreen key={settingsTab} initialTab={settingsTab} />}
         {currentView === 'reminders' && <RemindersScreen />}
       </View>
 
@@ -228,7 +228,9 @@ export default function App() {
   });
 
   if (fontsLoaded) {
-    (Text as any).defaultProps = (Text as any).defaultProps || {};
+    if (!(Text as any).defaultProps) {
+      (Text as any).defaultProps = {};
+    }
     (Text as any).defaultProps.style = { fontFamily: 'Vazirmatn_400Regular' };
   }
 

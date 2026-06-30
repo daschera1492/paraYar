@@ -9,7 +9,7 @@ import { Feather } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
 import {
   TransactionType, ParentCategoryType, Category, PARENT_CATEGORIES, COLOR_OPTIONS, CATEGORY_ICONS,
-  GOAL_ICONS, DEBT_ICONS,
+  GOAL_ICONS, DEBT_ICONS, StatusBarConfig, DEFAULT_STATUS_BAR_CONFIG,
 } from '../types';
 import { formatCurrency, calculateGoalProgress, generateId, getShamsiNow, SHAMSI_MONTH_NAMES, formatShamsiDateParts, gregorianToShamsi } from '../utils';
 import CurrencyInput from '../components/CurrencyInput';
@@ -17,7 +17,7 @@ import ShamsiDatePicker from '../components/ShamsiDatePicker';
 
 const SECTION_TITLES: Record<string, string> = {
   profile: 'پروفایل', budgets: 'بودجه', categories: 'دسته‌ها',
-  goals: 'اهداف', debts: 'بدهی‌ها', backup: 'پشتیبان', security: 'امنیت',
+  goals: 'اهداف', debts: 'بدهی‌ها', backup: 'پشتیبان', security: 'امنیت', statusbar: 'نوار وضعیت',
 };
 
 const iconMap: Record<string, any> = {
@@ -33,7 +33,7 @@ const iconMap: Record<string, any> = {
   'user-plus': 'user-plus', 'help-circle': 'help-circle', save: 'save',
 };
 
-type SettingTab = 'profile' | 'budgets' | 'categories' | 'backup' | 'goals' | 'debts' | 'security';
+type SettingTab = 'profile' | 'budgets' | 'categories' | 'backup' | 'goals' | 'debts' | 'security' | 'statusbar';
 
 interface SettingsScreenProps {
   onNavigateTo?: (view: string) => void;
@@ -48,6 +48,7 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
     savingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, contributeToGoal,
     debts, addDebt, updateDebt, deleteDebt, payDebt,
     appLock, setAppLock, accounts,
+    statusBarConfig, setStatusBarConfig,
   } = useFinance();
 
   const [activeTab, setActiveTab] = useState<SettingTab>(initialTab || 'profile');
@@ -427,7 +428,7 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
                     inputStyle={{ fontSize: 14 }} />
                   <TouchableOpacity style={styles.contributeBtn} onPress={() => {
                     const amt = Number(contributeAmount);
-                    if (amt > 0) { contributeToGoal(g.id, amt); setContributeAmount(''); }
+                    if (amt > 0) { contributeToGoal(g.id, amt, accounts.length > 0 ? accounts[0].id : undefined); setContributeAmount(''); }
                   }}>
                     <Text style={styles.contributeBtnText}>واریز</Text>
                   </TouchableOpacity>
@@ -550,7 +551,7 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
                   inputStyle={{ fontSize: 14 }} />
                 <TouchableOpacity style={styles.payBtn} onPress={() => {
                   const amt = Number(payDebtAmount);
-                  if (amt > 0) { payDebt(d.id, amt); setPayDebtAmount(''); }
+                  if (amt > 0) { payDebt(d.id, amt, accounts.length > 0 ? accounts[0].id : undefined); setPayDebtAmount(''); }
                 }}>
                   <Text style={styles.payBtnText}>پرداخت</Text>
                 </TouchableOpacity>
@@ -726,6 +727,76 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
     </View>
   );
 
+  const renderStatusBarTab = () => (
+    <View style={{ gap: 20 }}>
+      <View style={styles.backupIntroCard}>
+        <View style={styles.backupIntroDeco} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+          <Feather name="smartphone" size={24} color="#bfdbfe" />
+          <Text style={{ fontFamily: 'Vazirmatn_700Bold', fontSize: 14, color: '#fff' }}>نوار وضعیت (Status Bar)</Text>
+        </View>
+        <Text style={{ fontSize: 12, color: 'rgba(219,234,254,0.9)', lineHeight: 20 }}>
+          تنظیمات مربوط به نمایش اطلاعات در نوار وضعیت گوشی.
+        </Text>
+      </View>
+
+      <View style={styles.secCard}>
+        <View style={styles.secRow}>
+          <View style={styles.secRowLeft}>
+            <Feather name="activity" size={20} color="#2563eb" />
+            <View>
+              <Text style={styles.secTitle}>فعال‌سازی در پس‌زمینه</Text>
+              <Text style={styles.secDesc}>نمایش تاریخ، درآمد و پرداختی امروز در نوار وضعیت</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={[styles.toggleSwitch, statusBarConfig.enabled && styles.toggleSwitchActive]}
+            onPress={() => setStatusBarConfig({ ...statusBarConfig, enabled: !statusBarConfig.enabled })}>
+            <View style={[styles.toggleKnob, statusBarConfig.enabled && styles.toggleKnobActive]} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.secCard}>
+        <View style={styles.secRow}>
+          <View style={styles.secRowLeft}>
+            <Feather name="power" size={20} color="#2563eb" />
+            <View>
+              <Text style={styles.secTitle}>اجرای خودکار هنگام راه‌اندازی</Text>
+              <Text style={styles.secDesc}>حتی پس از بستن اپ یا خاموش/روشن کردن گوشی (نیازمند مجوز)</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={[styles.toggleSwitch, statusBarConfig.autoStart && styles.toggleSwitchActive]}
+            onPress={() => setStatusBarConfig({ ...statusBarConfig, autoStart: !statusBarConfig.autoStart })}>
+            <View style={[styles.toggleKnob, statusBarConfig.autoStart && styles.toggleKnobActive]} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.secCard}>
+        <View style={styles.secRow}>
+          <View style={styles.secRowLeft}>
+            <Feather name="circle" size={20} color="#2563eb" />
+            <View>
+              <Text style={styles.secTitle}>نمایش عدد روز شمسی به جای آیکون زنگوله</Text>
+              <Text style={styles.secDesc}>مثلاً بجای زنگوله، عدد «۸» داخل یک دایره نمایش داده شود</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={[styles.toggleSwitch, statusBarConfig.showDayNumber && styles.toggleSwitchActive]}
+            onPress={() => setStatusBarConfig({ ...statusBarConfig, showDayNumber: !statusBarConfig.showDayNumber })}>
+            <View style={[styles.toggleKnob, statusBarConfig.showDayNumber && styles.toggleKnobActive]} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.secInfoCard}>
+        <Feather name="info" size={16} color="#3b82f6" />
+        <Text style={{ fontSize: 12, color: '#1e40af', fontFamily: 'Vazirmatn_500Medium', flex: 1, lineHeight: 18 }}>
+          این تنظیمات ظاهر نوار وضعیت را کنترل می‌کند. برای اعمال تغییرات، برنامه را مجدداً باز کنید.
+        </Text>
+      </View>
+    </View>
+  );
+
   const renderSecurityTab = () => (
     <View style={{ gap: 20 }}>
       <View style={styles.secCard}>
@@ -791,6 +862,7 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
         {activeTab === 'debts' && renderDebtsTab()}
         {activeTab === 'backup' && renderBackupTab()}
         {activeTab === 'security' && renderSecurityTab()}
+        {activeTab === 'statusbar' && renderStatusBarTab()}
       </ScrollView>
 
       {isAddingCat && renderAddCategoryModal()}

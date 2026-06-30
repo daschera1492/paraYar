@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { BarChart } from 'react-native-chart-kit';
+import { BarChart, LineChart } from 'react-native-chart-kit';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, formatMonthYear, formatShortMonth, gregorianToShamsi, SHAMSI_MONTH_NAMES } from '../utils';
 
@@ -196,44 +196,71 @@ export default function ReportsScreen() {
             </View>
           </View>
           <View style={styles.chartContainer}>
-            <BarChart
-              data={{
-                labels: chartData.map(d => d.name),
-                datasets: [
-                  { data: chartData.map(d => d.income), color: () => '#10b981' },
-                  { data: chartData.map(d => d.expense), color: () => '#f43f5e' },
-                ],
-              }}
-              width={CHART_WIDTH}
-              height={220}
-              yAxisLabel=""
-              yAxisSuffix=""
-              chartConfig={{
-                backgroundColor: '#fff',
-                backgroundGradientFrom: '#fff',
-                backgroundGradientTo: '#fff',
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-                labelColor: () => '#6b7280',
-                barPercentage: 0.5,
-                propsForBackgroundLines: { strokeDasharray: '3 3', stroke: '#f3f4f6'},
-              }}
-              fromZero
-              showBarTops={false}
-              withCustomBarColorFromData
-              flatColor
-              style={{ borderRadius: 16 }}
-            />
+            {chartType === 'bar' ? (
+              <BarChart
+                data={{
+                  labels: chartData.map(d => d.name),
+                  datasets: [
+                    { data: chartData.map(d => d.income), color: () => '#10b981' },
+                    { data: chartData.map(d => d.expense), color: () => '#f43f5e' },
+                  ],
+                }}
+                width={CHART_WIDTH}
+                height={220}
+                yAxisLabel=""
+                yAxisSuffix=""
+                chartConfig={{
+                  backgroundColor: '#fff',
+                  backgroundGradientFrom: '#fff',
+                  backgroundGradientTo: '#fff',
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                  labelColor: () => '#6b7280',
+                  barPercentage: 0.5,
+                  propsForBackgroundLines: { strokeDasharray: '3 3', stroke: '#f3f4f6'},
+                }}
+                fromZero
+                showBarTops={false}
+                withCustomBarColorFromData
+                flatColor
+                style={{ borderRadius: 16 }}
+              />
+            ) : (
+              <LineChart
+                data={{
+                  labels: chartData.map(d => d.name),
+                  datasets: [
+                    { data: chartData.map(d => d.income), color: () => '#10b981', strokeWidth: 2 },
+                    { data: chartData.map(d => d.expense), color: () => '#f43f5e', strokeWidth: 2 },
+                  ],
+                }}
+                width={CHART_WIDTH}
+                height={220}
+                yAxisLabel=""
+                yAxisSuffix=""
+                chartConfig={{
+                  backgroundColor: '#fff',
+                  backgroundGradientFrom: '#fff',
+                  backgroundGradientTo: '#fff',
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                  labelColor: () => '#6b7280',
+                  propsForBackgroundLines: { strokeDasharray: '3 3', stroke: '#f3f4f6'},
+                }}
+                fromZero
+                bezier
+                style={{ borderRadius: 16 }}
+              />
+            )}
           </View>
         </View>
       )}
 
       <View style={styles.tabSection}>
         <View style={styles.tabHeader}>
-          <TouchableOpacity style={[styles.tabBtn, selectedAccount === 'all' && styles.tabBtnActive]}
-            onPress={() => {}}>
+          <View style={styles.tabBtn}>
             <Text style={styles.tabBtnTitle}>جزئیات هزینه‌ها</Text>
-          </TouchableOpacity>
+          </View>
         </View>
 
         {expenseData.length === 0 ? (
@@ -252,7 +279,7 @@ export default function ReportsScreen() {
                 <View style={styles.breakdownInfo}>
                   <View style={styles.breakdownRow}>
                     <Text style={styles.breakdownName}>{item.name}</Text>
-                    <Text style={styles.breakdownValue}>{formatCurrency(item.value).replace(' تومان', '')}</Text>
+                    <Text style={styles.breakdownValue}>{formatCurrency(item.value, true)}</Text>
                   </View>
                   <View style={styles.breakdownBarBg}>
                     <View style={[styles.breakdownBarFill, { width: `${pct}%`, backgroundColor: item.color }]} />
@@ -278,7 +305,7 @@ export default function ReportsScreen() {
                 <View style={styles.breakdownInfo}>
                   <View style={styles.breakdownRow}>
                     <Text style={styles.breakdownName}>{item.name}</Text>
-                    <Text style={styles.breakdownValue}>{formatCurrency(item.value).replace(' تومان', '')}</Text>
+                    <Text style={styles.breakdownValue}>{formatCurrency(item.value, true)}</Text>
                   </View>
                   <View style={styles.breakdownBarBg}>
                     <View style={[styles.breakdownBarFill, { width: `${pct}%`, backgroundColor: item.color }]} />

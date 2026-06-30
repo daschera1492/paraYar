@@ -8,12 +8,13 @@ export function updateStatusBar(data: {
   income: string;
   expense: string;
   reminders: string[];
+  showDayNumber?: boolean;
 }) {
   if (Platform.OS !== 'android' || !StatusBarModule) return;
   try {
     StatusBarModule.updateStatusBar(
       data.dateText,
-      data.dayNum,
+      data.showDayNumber ? data.dayNum : '',
       data.income,
       data.expense,
       data.reminders,

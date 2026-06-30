@@ -17,10 +17,21 @@ export default function LockScreen({ onUnlock }: LockScreenProps) {
   const [confirmPin, setConfirmPin] = useState('');
   const [error, setError] = useState('');
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const biometricTried = useRef(false);
 
   useEffect(() => {
-    initLock();
-  }, [appLock]);
+    if (!appLock.enabled) {
+      if (!appLock.pin) {
+        setMode('create');
+        return;
+      }
+      setMode('enter');
+    }
+    if (appLock.useBiometric && !biometricTried.current) {
+      biometricTried.current = true;
+      tryBiometric();
+    }
+  }, [appLock.enabled, appLock.pin, appLock.useBiometric]);
 
   useEffect(() => {
     if (error) {
@@ -42,7 +53,7 @@ export default function LockScreen({ onUnlock }: LockScreenProps) {
         setPin('');
       }
     }
-  }, [pin, mode]);
+  }, [pin, mode, appLock.pin, onUnlock]);
 
   useEffect(() => {
     if (mode === 'create' && pin.length >= 4) {
@@ -64,19 +75,6 @@ export default function LockScreen({ onUnlock }: LockScreenProps) {
       }
     }
   }, [confirmPin, mode]);
-
-  const initLock = async () => {
-    if (!appLock.enabled) {
-      if (!appLock.pin) {
-        setMode('create');
-        return;
-      }
-      setMode('enter');
-    }
-    if (appLock.useBiometric) {
-      tryBiometric();
-    }
-  };
 
   const tryBiometric = async () => {
     const compatible = await LocalAuthentication.hasHardwareAsync();

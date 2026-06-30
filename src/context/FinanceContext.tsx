@@ -4,6 +4,7 @@ import { Platform, NativeModules } from 'react-native';
 import {
   Transaction, Reminder, Category, UserProfile, BackupData, DEFAULT_CATEGORIES,
   Account, RecurringTransaction, SavingsGoal, Debt, AppLock, DEFAULT_ACCOUNTS,
+  StatusBarConfig, DEFAULT_STATUS_BAR_CONFIG,
 } from '../types';
 import { generateId, gregorianToShamsi, SHAMSI_MONTH_NAMES, formatCurrency } from '../utils';
 import { updateStatusBar } from '../services/StatusBarService';
@@ -53,16 +54,19 @@ interface FinanceContextType {
   addSavingsGoal: (g: Omit<SavingsGoal, 'id'>) => void;
   updateSavingsGoal: (id: string, g: Omit<SavingsGoal, 'id'>) => void;
   deleteSavingsGoal: (id: string) => void;
-  contributeToGoal: (id: string, amount: number) => void;
+  contributeToGoal: (id: string, amount: number, fromAccountId?: string) => void;
   // Debts
   debts: Debt[];
   addDebt: (d: Omit<Debt, 'id'>) => void;
   updateDebt: (id: string, d: Omit<Debt, 'id'>) => void;
   deleteDebt: (id: string) => void;
-  payDebt: (id: string, amount: number) => void;
+  payDebt: (id: string, amount: number, fromAccountId?: string) => void;
   // Lock
   appLock: AppLock;
   setAppLock: (lock: AppLock) => void;
+  // Status Bar
+  statusBarConfig: StatusBarConfig;
+  setStatusBarConfig: (config: StatusBarConfig) => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -78,6 +82,7 @@ const KEYS = {
   goals: '@finance/goals',
   debts: '@finance/debts',
   lock: '@finance/lock',
+  statusBar: '@finance/statusBar',
 } as const;
 
 const DEFAULT_PROFILE: UserProfile = { name: 'کاربر', phone: '', email: '' };
@@ -100,6 +105,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [appLock, setAppLockState] = useState<AppLock>(DEFAULT_LOCK);
+  const [statusBarConfig, setStatusBarConfigState] = useState<StatusBarConfig>(DEFAULT_STATUS_BAR_CONFIG);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,7 +113,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       try {
         const [
           txData, catData, budData, remData, profData,
-          accData, recData, goalData, debtData, lockData,
+          accData, recData, goalData, debtData, lockData, sbData,
         ] = await Promise.all([
           AsyncStorage.getItem(KEYS.transactions),
           AsyncStorage.getItem(KEYS.categories),
@@ -119,13 +125,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           AsyncStorage.getItem(KEYS.goals),
           AsyncStorage.getItem(KEYS.debts),
           AsyncStorage.getItem(KEYS.lock),
+          AsyncStorage.getItem(KEYS.statusBar),
         ]);
         if (txData) {
           let txs: Transaction[] = JSON.parse(txData);
           // migration v1.3 → v1.4: assign accountId to old transactions
           let migrated = false;
           txs = txs.map(t => {
-            if (!t.accountId) { t.accountId = 'cash_default'; migrated = true; }
+            if (!t.accountId) { migrated = true; return { ...t, accountId: 'cash_default' }; }
             return t;
           });
           setTransactions(sortByDateDesc(txs));
@@ -140,6 +147,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         if (goalData) setSavingsGoals(JSON.parse(goalData));
         if (debtData) setDebts(JSON.parse(debtData));
         if (lockData) setAppLockState(JSON.parse(lockData));
+        if (sbData) setStatusBarConfigState(JSON.parse(sbData));
       } catch {}
       setIsLoaded(true);
     })();
@@ -159,6 +167,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => { if (isLoaded) persist(KEYS.goals, savingsGoals); }, [savingsGoals, isLoaded]);
   useEffect(() => { if (isLoaded) persist(KEYS.debts, debts); }, [debts, isLoaded]);
   useEffect(() => { if (isLoaded) persist(KEYS.lock, appLock); }, [appLock, isLoaded]);
+  useEffect(() => { if (isLoaded) persist(KEYS.statusBar, statusBarConfig); }, [statusBarConfig, isLoaded]);
 
   useEffect(() => {
     if (!isLoaded || Platform.OS !== 'android') return;
@@ -178,6 +187,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoaded) return;
+    if (!statusBarConfig.enabled && !statusBarConfig.autoStart) return;
     const now = new Date();
     const s = gregorianToShamsi(now.getFullYear(), now.getMonth() + 1, now.getDate());
     const dateText = `${s.day} ${SHAMSI_MONTH_NAMES[s.month - 1]} ${s.year}`;
@@ -198,8 +208,9 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       income: todayInc.toLocaleString(),
       expense: todayExp.toLocaleString(),
       reminders: activeReminders.length > 0 ? activeReminders.slice(0, 5) : [],
+      showDayNumber: statusBarConfig.showDayNumber,
     });
-  }, [transactions, reminders, isLoaded]);
+  }, [transactions, reminders, isLoaded, statusBarConfig]);
 
   function isReminderDue(r: Reminder): boolean {
     const now = new Date();
@@ -317,8 +328,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const now = new Date();
     recurringTransactions.forEach(rt => {
       if (!rt.isActive) return;
-      const nextDate = new Date(rt.startDate);
-      while (nextDate <= now) {
+      let nextDate = new Date(rt.startDate);
+      const interval = Math.max(rt.intervalValue, 1);
+      let iterations = 0;
+      const MAX_ITERATIONS = 365;
+      while (nextDate <= now && iterations < MAX_ITERATIONS) {
         addTransaction({
           amount: rt.amount,
           type: rt.type,
@@ -328,12 +342,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           accountId: rt.accountId,
         });
         switch (rt.frequency) {
-          case 'daily': nextDate.setDate(nextDate.getDate() + rt.intervalValue); break;
-          case 'weekly': nextDate.setDate(nextDate.getDate() + rt.intervalValue * 7); break;
-          case 'monthly': nextDate.setMonth(nextDate.getMonth() + rt.intervalValue); break;
-          case 'yearly': nextDate.setFullYear(nextDate.getFullYear() + rt.intervalValue); break;
+          case 'daily': nextDate.setDate(nextDate.getDate() + interval); break;
+          case 'weekly': nextDate.setDate(nextDate.getDate() + interval * 7); break;
+          case 'monthly': nextDate.setMonth(nextDate.getMonth() + interval); break;
+          case 'yearly': nextDate.setFullYear(nextDate.getFullYear() + interval); break;
         }
         if (rt.endDate && nextDate > new Date(rt.endDate)) break;
+        iterations++;
       }
       setRecurringTransactions(prev => prev.map(r =>
         r.id === rt.id ? { ...r, startDate: nextDate.toISOString() } : r
@@ -353,21 +368,22 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setSavingsGoals(prev => prev.filter(g => g.id !== id));
   }, []);
 
-  const contributeToGoal = useCallback((id: string, amount: number) => {
+  const contributeToGoal = useCallback((id: string, amount: number, fromAccountId?: string) => {
     setSavingsGoals(prev => prev.map(g =>
       g.id === id ? { ...g, currentAmount: g.currentAmount + amount } : g
     ));
     if (amount > 0) {
+      const defaultAcc = accounts.length > 0 ? accounts[0].id : '';
       addTransaction({
         amount,
         type: 'expense',
         categoryId: 'savings_goal',
         note: 'واریز به هدف پس‌انداز',
         date: new Date().toISOString(),
-        accountId: '',
+        accountId: fromAccountId || defaultAcc,
       });
     }
-  }, [addTransaction]);
+  }, [addTransaction, accounts]);
 
   const addDebt = useCallback((d: Omit<Debt, 'id'>) => {
     setDebts(prev => [...prev, { ...d, id: generateId() }]);
@@ -381,7 +397,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setDebts(prev => prev.filter(d => d.id !== id));
   }, []);
 
-  const payDebt = useCallback((id: string, amount: number) => {
+  const payDebt = useCallback((id: string, amount: number, fromAccountId?: string) => {
     setDebts(prev => prev.map(d => {
       if (d.id !== id) return d;
       const newRemaining = Math.max(d.remainingAmount - amount, 0);
@@ -389,19 +405,24 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       return { ...d, remainingAmount: newRemaining, isPaid };
     }));
     if (amount > 0) {
+      const defaultAcc = accounts.length > 0 ? accounts[0].id : '';
       addTransaction({
         amount,
         type: amount > 0 ? 'expense' : 'income',
         categoryId: 'debt_payment',
         note: 'پرداخت بدهی',
         date: new Date().toISOString(),
-        accountId: '',
+        accountId: fromAccountId || defaultAcc,
       });
     }
-  }, [addTransaction]);
+  }, [addTransaction, accounts]);
 
   const setAppLock = useCallback((lock: AppLock) => {
     setAppLockState(lock);
+  }, []);
+
+  const setStatusBarConfig = useCallback((config: StatusBarConfig) => {
+    setStatusBarConfigState(config);
   }, []);
 
   const now = new Date();
@@ -425,24 +446,42 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const getBackupData = useCallback((): BackupData => {
     return {
       transactions, budgets, categories, reminders, userProfile,
-      accounts, recurringTransactions, savingsGoals, debts, appLock,
+      accounts, recurringTransactions, savingsGoals, debts, appLock, statusBarConfig,
       exportedAt: new Date().toISOString()
     };
-  }, [transactions, budgets, categories, reminders, userProfile, accounts, recurringTransactions, savingsGoals, debts, appLock]);
+  }, [transactions, budgets, categories, reminders, userProfile, accounts, recurringTransactions, savingsGoals, debts, appLock, statusBarConfig]);
+
+  const validateArray = (arr: any, checkFields: string[]): boolean => {
+    if (!Array.isArray(arr)) return false;
+    return arr.every((item: any) =>
+      item && typeof item === 'object' && checkFields.every(f => f in item)
+    );
+  };
 
   const importBackup = useCallback((data: any): boolean => {
     try {
       if (!data || typeof data !== 'object') return false;
-      if (data.transactions && Array.isArray(data.transactions)) setTransactions(sortByDateDesc(data.transactions));
+      if (data.transactions && validateArray(data.transactions, ['id', 'amount', 'type', 'categoryId', 'date', 'accountId']))
+        setTransactions(sortByDateDesc(data.transactions));
       if (data.budgets && typeof data.budgets === 'object') setBudgets(data.budgets);
-      if (data.categories && Array.isArray(data.categories)) setCategories(data.categories);
-      if (data.reminders && Array.isArray(data.reminders)) setReminders(data.reminders);
-      if (data.userProfile && typeof data.userProfile === 'object') setUserProfile(data.userProfile);
-      if (data.accounts && Array.isArray(data.accounts)) setAccounts(data.accounts);
-      if (data.recurringTransactions && Array.isArray(data.recurringTransactions)) setRecurringTransactions(data.recurringTransactions);
-      if (data.savingsGoals && Array.isArray(data.savingsGoals)) setSavingsGoals(data.savingsGoals);
-      if (data.debts && Array.isArray(data.debts)) setDebts(data.debts);
-      if (data.appLock && typeof data.appLock === 'object') setAppLockState(data.appLock);
+      if (data.categories && validateArray(data.categories, ['id', 'name', 'icon', 'color', 'type']))
+        setCategories(data.categories);
+      if (data.reminders && validateArray(data.reminders, ['id', 'title', 'type', 'dueDate', 'isActive']))
+        setReminders(data.reminders);
+      if (data.userProfile && typeof data.userProfile === 'object' && 'name' in data.userProfile)
+        setUserProfile(data.userProfile);
+      if (data.accounts && validateArray(data.accounts, ['id', 'name', 'type', 'initialBalance', 'color', 'icon']))
+        setAccounts(data.accounts);
+      if (data.recurringTransactions && validateArray(data.recurringTransactions, ['id', 'amount', 'type', 'frequency', 'intervalValue', 'startDate']))
+        setRecurringTransactions(data.recurringTransactions);
+      if (data.savingsGoals && validateArray(data.savingsGoals, ['id', 'name', 'targetAmount', 'currentAmount']))
+        setSavingsGoals(data.savingsGoals);
+      if (data.debts && validateArray(data.debts, ['id', 'personName', 'type', 'amount', 'remainingAmount', 'isPaid']))
+        setDebts(data.debts);
+      if (data.appLock && typeof data.appLock === 'object' && 'enabled' in data.appLock)
+        setAppLockState(data.appLock);
+      if (data.statusBarConfig && typeof data.statusBarConfig === 'object' && 'enabled' in data.statusBarConfig)
+        setStatusBarConfigState(data.statusBarConfig);
       return true;
     } catch { return false; }
   }, []);
@@ -461,6 +500,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     savingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, contributeToGoal,
     debts, addDebt, updateDebt, deleteDebt, payDebt,
     appLock, setAppLock,
+    statusBarConfig, setStatusBarConfig,
   };
 
   return (

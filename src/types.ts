@@ -111,6 +111,12 @@ export interface AppLock {
   useBiometric: boolean;
 }
 
+export interface StatusBarConfig {
+  enabled: boolean;
+  autoStart: boolean;
+  showDayNumber: boolean;
+}
+
 export interface BackupData {
   transactions: Transaction[];
   budgets: Record<string, number>;
@@ -122,8 +128,15 @@ export interface BackupData {
   savingsGoals: SavingsGoal[];
   debts: Debt[];
   appLock: AppLock;
+  statusBarConfig: StatusBarConfig;
   exportedAt: string;
 }
+
+export const DEFAULT_STATUS_BAR_CONFIG: StatusBarConfig = {
+  enabled: false,
+  autoStart: false,
+  showDayNumber: true,
+};
 
 export const DEFAULT_ACCOUNTS: Account[] = [
   { id: 'cash_default', name: 'کیف پول', type: 'cash', initialBalance: 0, color: '#10b981', icon: 'wallet', isDefault: true },

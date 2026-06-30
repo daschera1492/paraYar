@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { gregorianToShamsi, shamsiToGregorian, SHAMSI_MONTH_NAMES } from '../utils';
+import { gregorianToShamsi, shamsiToGregorian, SHAMSI_MONTH_NAMES, isShamsiLeapYear } from '../utils';
 
 interface ShamsiDatePickerProps {
   visible: boolean;
@@ -23,7 +23,7 @@ export default function ShamsiDatePicker({ visible, date, onConfirm, onCancel }:
     setDpDay(s.day);
   }, [visible]);
 
-  const maxDay = (dpMonth <= 6 ? 31 : dpMonth <= 11 ? 30 : 29);
+  const maxDay = (dpMonth <= 6 ? 31 : dpMonth <= 11 ? 30 : isShamsiLeapYear(dpYear) ? 30 : 29);
   const safeDay = Math.min(dpDay, maxDay);
 
   const confirmDate = () => {
