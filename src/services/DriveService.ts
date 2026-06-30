@@ -1,18 +1,13 @@
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { Platform } from 'react-native';
 
-WebBrowser.maybeCompleteAuthSession();
+const WEB_CLIENT_ID = '542220749719-llq63d63hn9vt8miij87uce075kpnhv2.apps.googleusercontent.com';
 
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
-
-const CLIENT_ID = '542220749719-llq63d63hn9vt8miij87uce075kpnhv2.apps.googleusercontent.com';
-const REDIRECT_URI = 'https://auth.expo.io/@anonymous/my-accountant';
-
-const discovery = {
-  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-  tokenEndpoint: 'https://oauth2.googleapis.com/token',
-  revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
-};
+GoogleSignin.configure({
+  webClientId: WEB_CLIENT_ID,
+  scopes: ['https://www.googleapis.com/auth/drive.file'],
+  offlineAccess: true,
+});
 
 export type DriveAuthResult = {
   accessToken: string;
@@ -21,67 +16,29 @@ export type DriveAuthResult = {
 
 export async function signInToDrive(): Promise<DriveAuthResult | null> {
   try {
-    const authRequest = new AuthSession.AuthRequest({
-      clientId: CLIENT_ID,
-      scopes: [DRIVE_SCOPE],
-      extraParams: {
-        access_type: 'offline',
-        prompt: 'consent',
-      },
-    });
-
-    const result = await authRequest.promptAsync(discovery, { useProxy: true });
-    if (result.type !== 'success') return null;
-
-    const code = result.params.code;
-    const tokenResult = await exchangeCodeForToken(code);
-    if (!tokenResult) return null;
-
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const userInfo = await GoogleSignin.signIn();
+    const tokens = await GoogleSignin.getTokens();
     return {
-      accessToken: tokenResult.access_token,
-      refreshToken: tokenResult.refresh_token || null,
+      accessToken: tokens.accessToken,
+      refreshToken: null,
     };
-  } catch {
+  } catch (error: any) {
+    if (error.code === statusCodes.SIGN_IN_CANCELLED) return null;
     return null;
   }
 }
 
-async function exchangeCodeForToken(code: string): Promise<{
-  access_token: string;
-  refresh_token?: string;
-} | null> {
+export async function signOutFromDrive(): Promise<void> {
   try {
-    const resp = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code,
-        client_id: CLIENT_ID,
-        redirect_uri: REDIRECT_URI,
-        grant_type: 'authorization_code',
-      }).toString(),
-    });
-    const data = await resp.json();
-    if (!data.access_token) return null;
-    return { access_token: data.access_token, refresh_token: data.refresh_token };
-  } catch {
-    return null;
-  }
+    await GoogleSignin.signOut();
+  } catch {}
 }
 
-export async function refreshAccessToken(refreshToken: string): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   try {
-    const resp = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        refresh_token: refreshToken,
-        client_id: CLIENT_ID,
-        grant_type: 'refresh_token',
-      }).toString(),
-    });
-    const data = await resp.json();
-    return data.access_token || null;
+    const tokens = await GoogleSignin.getTokens();
+    return tokens.accessToken;
   } catch {
     return null;
   }

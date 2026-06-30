@@ -111,10 +111,8 @@ function AppContent() {
     let token = driveBackup.accessToken;
     if (!token) return;
     try {
-      if (driveBackup.refreshToken) {
-        const newToken = await refreshAccessToken(driveBackup.refreshToken);
-        if (newToken) { token = newToken; setDriveBackup({ ...driveBackup, accessToken: newToken }); }
-      }
+      const newToken = await refreshAccessToken();
+      if (newToken) { token = newToken; setDriveBackup({ ...driveBackup, accessToken: newToken }); }
       const data = getBackupData();
       const jsonStr = JSON.stringify(data, null, 2);
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '_');

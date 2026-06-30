@@ -11,7 +11,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -105,16 +104,17 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         return "$rle${rlm}$text$pdf"
     }
 
-    private fun createDayNumberBitmap(dayNum: String, size: Int = 120): Bitmap? {
+    private fun createDayNumberBitmap(dayNum: String): Bitmap? {
         if (dayNum.isEmpty()) return null
+        val size = 120
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#4f46e5")
             style = Paint.Style.FILL
         }
-        canvas.drawCircle(size / 2f, size / 2f, size / 2f, circlePaint)
-        val textSize = size * 0.45f
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, bgPaint)
+        val textSize = size * 0.5f
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             this.textSize = textSize
@@ -163,46 +163,25 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val dayBitmap = if (dayNum.isNotEmpty()) createDayNumberBitmap(dayNum) else null
-        val largeBitmap = if (dayNum.isNotEmpty()) createDayNumberBitmap(dayNum, 120) else null
+        val largeBitmap = if (dayNum.isNotEmpty()) createDayNumberBitmap(dayNum) else null
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && dayBitmap != null) {
-            val builder = Notification.Builder(context, CHANNEL_ID)
-                .setContentTitle(titleText)
-                .setContentText(summaryText)
-                .setStyle(Notification.BigTextStyle().bigText(contentText))
-                .setPriority(Notification.PRIORITY_MIN)
-                .setOngoing(true)
-                .setContentIntent(pendingOpenIntent)
-                .setShowWhen(true)
-                .setSmallIcon(Icon.createWithBitmap(dayBitmap))
-            if (largeBitmap != null) {
-                builder.setLargeIcon(largeBitmap)
-            }
-            val notification = builder.build()
-            try {
-                manager.notify(NOTIFICATION_ID, notification)
-                StatusBarService.updateNotification(notification)
-            } catch (_: Exception) {}
-        } else {
-            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle(titleText)
-                .setContentText(summaryText)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
-                .setPriority(NotificationCompat.PRIORITY_MIN)
-                .setOngoing(true)
-                .setContentIntent(pendingOpenIntent)
-                .setShowWhen(true)
-                .setSmallIcon(android.R.drawable.ic_popup_reminder)
-            if (largeBitmap != null) {
-                builder.setLargeIcon(largeBitmap)
-            }
-            val notification = builder.build()
-            try {
-                manager.notify(NOTIFICATION_ID, notification)
-                StatusBarService.updateNotification(notification)
-            } catch (_: Exception) {}
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle(titleText)
+            .setContentText(summaryText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setOngoing(true)
+            .setContentIntent(pendingOpenIntent)
+            .setShowWhen(true)
+            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+        if (largeBitmap != null) {
+            builder.setLargeIcon(largeBitmap)
         }
+        val notification = builder.build()
+        try {
+            manager.notify(NOTIFICATION_ID, notification)
+            StatusBarService.updateNotification(notification)
+        } catch (_: Exception) {}
     }
 
     private fun createChannel(context: Context) {

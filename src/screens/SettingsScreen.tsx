@@ -14,7 +14,7 @@ import {
 import { formatCurrency, calculateGoalProgress, generateId, getShamsiNow, SHAMSI_MONTH_NAMES, formatShamsiDateParts, gregorianToShamsi } from '../utils';
 import CurrencyInput from '../components/CurrencyInput';
 import ShamsiDatePicker from '../components/ShamsiDatePicker';
-import { signInToDrive, uploadBackupToDrive, refreshAccessToken } from '../services/DriveService';
+import { signInToDrive, signOutFromDrive, uploadBackupToDrive, refreshAccessToken } from '../services/DriveService';
 
 const SECTION_TITLES: Record<string, string> = {
   profile: 'پروفایل', budgets: 'بودجه', categories: 'دسته‌ها',
@@ -146,7 +146,7 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
         ...driveBackup,
         connected: true,
         accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
+        refreshToken: null,
       });
       setDriveStatus({ type: 'success', message: 'اتصال به گوگل‌درایو موفقیت‌آمیز بود.' });
     } else {
@@ -154,7 +154,8 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
     }
   }, [driveBackup, setDriveBackup]);
 
-  const handleDriveDisconnect = useCallback(() => {
+  const handleDriveDisconnect = useCallback(async () => {
+    await signOutFromDrive();
     setDriveBackup({ ...DEFAULT_DRIVE_BACKUP, autoBackup: false, intervalHours: driveBackup.intervalHours });
     setDriveStatus(null);
   }, [setDriveBackup, driveBackup.intervalHours]);
@@ -168,12 +169,10 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
     setDriveUploading(true);
     setDriveStatus(null);
     try {
-      if (driveBackup.refreshToken) {
-        const newToken = await refreshAccessToken(driveBackup.refreshToken);
-        if (newToken) {
-          token = newToken;
-          setDriveBackup({ ...driveBackup, accessToken: newToken });
-        }
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        token = newToken;
+        setDriveBackup({ ...driveBackup, accessToken: newToken });
       }
       const backupObj = getBackupData();
       const jsonString = JSON.stringify(backupObj, null, 2);
