@@ -1,17 +1,15 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
-import { Platform } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
-const CLIENT_ID = Platform.select({
-  android: 'YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com',
-  default: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
-});
+const CLIENT_ID = '542220749719-llq63d63hn9vt8miij87uce075kpnhv2.apps.googleusercontent.com';
 
-const REDIRECT_URI = AuthSession.makeRedirectUri();
+const REDIRECT_URI = AuthSession.makeRedirectUri({
+  native: 'com.myaccountant.app:/oauthredirect',
+});
 
 const discovery = {
   authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
