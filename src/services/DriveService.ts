@@ -6,10 +6,7 @@ WebBrowser.maybeCompleteAuthSession();
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
 const CLIENT_ID = '542220749719-llq63d63hn9vt8miij87uce075kpnhv2.apps.googleusercontent.com';
-
-const REDIRECT_URI = AuthSession.makeRedirectUri({
-  native: 'com.myaccountant.app:/oauthredirect',
-});
+const REDIRECT_URI = 'https://auth.expo.io/@anonymous/my-accountant';
 
 const discovery = {
   authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -27,14 +24,13 @@ export async function signInToDrive(): Promise<DriveAuthResult | null> {
     const authRequest = new AuthSession.AuthRequest({
       clientId: CLIENT_ID,
       scopes: [DRIVE_SCOPE],
-      redirectUri: REDIRECT_URI,
       extraParams: {
         access_type: 'offline',
         prompt: 'consent',
       },
     });
 
-    const result = await authRequest.promptAsync(discovery);
+    const result = await authRequest.promptAsync(discovery, { useProxy: true });
     if (result.type !== 'success') return null;
 
     const code = result.params.code;
