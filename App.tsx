@@ -3,6 +3,7 @@ import {
   View, Text, ActivityIndicator, StyleSheet, StatusBar, I18nManager, AppState,
   Animated, Pressable, ScrollView, Modal, BackHandler,
 } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 
 I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
@@ -27,6 +28,9 @@ import AccountsScreen from './src/screens/AccountsScreen';
 import LockScreen from './src/screens/LockScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { getPendingSms } from './src/services/SmsBridge';
+import {
+  uploadBackupToDrive, refreshAccessToken, shouldAutoBackup, hashData,
+} from './src/services/DriveService';
 
 type ViewName = 'home' | 'accounts' | 'reports' | 'add' | 'transfer' | 'profile' | 'reminders';
 
@@ -59,7 +63,7 @@ function AppContent() {
   const [currentView, setCurrentView] = useState<ViewName>('home');
   const [settingsTab, setSettingsTab] = useState<SettingTab>('profile');
   const [smsData, setSmsData] = useState<{ amount: number; type: 'income' | 'expense'; bankName: string; cardSuffix: string } | null>(null);
-  const { isLoaded, appLock, userProfile } = useFinance();
+  const { isLoaded, appLock, userProfile, driveBackup, setDriveBackup, getBackupData, getDataHash } = useFinance();
   const [userUnlocked, setUserUnlocked] = useState(false);
   const [isOnboarded, setIsOnboarded] = useState(false);
   const isUnlocked = !appLock.enabled || userUnlocked;
@@ -67,6 +71,7 @@ function AppContent() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const lastBackPress = useRef(0);
   const [showExitToast, setShowExitToast] = useState(false);
+  const prevOnlineRef = useRef(true);
   const drawerAnim = useRef(new Animated.Value(300)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
 
@@ -99,6 +104,27 @@ function AppContent() {
 
   const needsOnboarding = !isOnboarded && userProfile.name === 'کاربر' && !userProfile.phone && !userProfile.email;
 
+  const runAutoBackup = useCallback(async () => {
+    if (!driveBackup.connected || !driveBackup.autoBackup) return;
+    const currentHash = getDataHash();
+    if (!shouldAutoBackup(driveBackup.lastBackupTimestamp, driveBackup.intervalHours, currentHash, driveBackup.lastDataHash)) return;
+    let token = driveBackup.accessToken;
+    if (!token) return;
+    try {
+      if (driveBackup.refreshToken) {
+        const newToken = await refreshAccessToken(driveBackup.refreshToken);
+        if (newToken) { token = newToken; setDriveBackup({ ...driveBackup, accessToken: newToken }); }
+      }
+      const data = getBackupData();
+      const jsonStr = JSON.stringify(data, null, 2);
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '_');
+      const ok = await uploadBackupToDrive(token, jsonStr, `finance_backup_${dateStr}.json`);
+      if (ok) {
+        setDriveBackup({ ...driveBackup, accessToken: token, lastBackupTimestamp: Date.now(), lastDataHash: currentHash });
+      }
+    } catch {}
+  }, [driveBackup, getBackupData, getDataHash, setDriveBackup]);
+
   useEffect(() => {
     const checkSms = async () => {
       const pending = await getPendingSms();
@@ -114,10 +140,24 @@ function AppContent() {
     };
     checkSms();
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') checkSms();
+      if (state === 'active') {
+        checkSms();
+        runAutoBackup();
+      }
     });
     return () => sub.remove();
-  }, []);
+  }, [runAutoBackup]);
+
+  useEffect(() => {
+    const unsub = NetInfo.addEventListener(state => {
+      const online = state.isConnected ?? false;
+      if (online && !prevOnlineRef.current) {
+        runAutoBackup();
+      }
+      prevOnlineRef.current = online;
+    });
+    return () => unsub();
+  }, [runAutoBackup]);
 
   const handleViewChange = useCallback((view: ViewName) => {
     setCurrentView(view);

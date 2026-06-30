@@ -117,6 +117,35 @@ export interface StatusBarConfig {
   showDayNumber: boolean;
 }
 
+export interface DriveBackupConfig {
+  connected: boolean;
+  autoBackup: boolean;
+  intervalHours: number;
+  lastBackupTimestamp: number | null;
+  lastDataHash: string;
+  accessToken: string | null;
+  refreshToken: string | null;
+}
+
+export const BACKUP_INTERVALS = [
+  { value: 2, label: '۲ ساعت' },
+  { value: 4, label: '۴ ساعت' },
+  { value: 6, label: '۶ ساعت' },
+  { value: 12, label: '۱۲ ساعت' },
+  { value: 24, label: '۲۴ ساعت' },
+  { value: 168, label: 'یک هفته' },
+] as const;
+
+export const DEFAULT_DRIVE_BACKUP: DriveBackupConfig = {
+  connected: false,
+  autoBackup: false,
+  intervalHours: 24,
+  lastBackupTimestamp: null,
+  lastDataHash: '',
+  accessToken: null,
+  refreshToken: null,
+};
+
 export interface BackupData {
   transactions: Transaction[];
   budgets: Record<string, number>;
@@ -129,6 +158,7 @@ export interface BackupData {
   debts: Debt[];
   appLock: AppLock;
   statusBarConfig: StatusBarConfig;
+  driveBackup?: DriveBackupConfig;
   exportedAt: string;
 }
 

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Modal,
+  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Modal, ActivityIndicator,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -9,11 +9,12 @@ import { Feather } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
 import {
   TransactionType, ParentCategoryType, Category, PARENT_CATEGORIES, COLOR_OPTIONS, CATEGORY_ICONS,
-  GOAL_ICONS, DEBT_ICONS, StatusBarConfig, DEFAULT_STATUS_BAR_CONFIG,
+  GOAL_ICONS, DEBT_ICONS,   StatusBarConfig, DEFAULT_STATUS_BAR_CONFIG, BACKUP_INTERVALS, DEFAULT_DRIVE_BACKUP,
 } from '../types';
 import { formatCurrency, calculateGoalProgress, generateId, getShamsiNow, SHAMSI_MONTH_NAMES, formatShamsiDateParts, gregorianToShamsi } from '../utils';
 import CurrencyInput from '../components/CurrencyInput';
 import ShamsiDatePicker from '../components/ShamsiDatePicker';
+import { signInToDrive, uploadBackupToDrive, refreshAccessToken } from '../services/DriveService';
 
 const SECTION_TITLES: Record<string, string> = {
   profile: 'پروفایل', budgets: 'بودجه', categories: 'دسته‌ها',
@@ -49,6 +50,7 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
     debts, addDebt, updateDebt, deleteDebt, payDebt,
     appLock, setAppLock, accounts,
     statusBarConfig, setStatusBarConfig,
+    driveBackup, setDriveBackup, getDataHash,
   } = useFinance();
 
   const [activeTab, setActiveTab] = useState<SettingTab>(initialTab || 'profile');
@@ -63,6 +65,8 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
 
   const [tempProfile, setTempProfile] = useState(userProfile);
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
+  const [driveUploading, setDriveUploading] = useState(false);
+  const [driveStatus, setDriveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [isAddingCat, setIsAddingCat] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
@@ -130,6 +134,69 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
       setImportStatus({ type: 'error', message: 'خطا در خواندن فایل.' });
     }
   };
+
+  const lastBackupTime = driveBackup.lastBackupTimestamp
+    ? new Date(driveBackup.lastBackupTimestamp).toLocaleString('fa-IR')
+    : null;
+
+  const handleDriveLogin = useCallback(async () => {
+    const result = await signInToDrive();
+    if (result) {
+      setDriveBackup({
+        ...driveBackup,
+        connected: true,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      });
+      setDriveStatus({ type: 'success', message: 'اتصال به گوگل‌درایو موفقیت‌آمیز بود.' });
+    } else {
+      setDriveStatus({ type: 'error', message: 'خطا در اتصال به گوگل. لطفاً دوباره تلاش کنید.' });
+    }
+  }, [driveBackup, setDriveBackup]);
+
+  const handleDriveDisconnect = useCallback(() => {
+    setDriveBackup({ ...DEFAULT_DRIVE_BACKUP, autoBackup: false, intervalHours: driveBackup.intervalHours });
+    setDriveStatus(null);
+  }, [setDriveBackup, driveBackup.intervalHours]);
+
+  const handleDriveManualUpload = useCallback(async () => {
+    let token = driveBackup.accessToken;
+    if (!token) {
+      setDriveStatus({ type: 'error', message: 'ابتدا به گوگل متصل شوید.' });
+      return;
+    }
+    setDriveUploading(true);
+    setDriveStatus(null);
+    try {
+      if (driveBackup.refreshToken) {
+        const newToken = await refreshAccessToken(driveBackup.refreshToken);
+        if (newToken) {
+          token = newToken;
+          setDriveBackup({ ...driveBackup, accessToken: newToken });
+        }
+      }
+      const backupObj = getBackupData();
+      const jsonString = JSON.stringify(backupObj, null, 2);
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '_');
+      const fileName = `finance_backup_${dateStr}.json`;
+      const ok = await uploadBackupToDrive(token, jsonString, fileName);
+      if (ok) {
+        const currentHash = getDataHash();
+        setDriveBackup({
+          ...driveBackup,
+          accessToken: token,
+          lastBackupTimestamp: Date.now(),
+          lastDataHash: currentHash,
+        });
+        setDriveStatus({ type: 'success', message: 'بکاپ با موفقیت به گوگل‌درایو ارسال شد.' });
+      } else {
+        setDriveStatus({ type: 'error', message: 'خطا در آپلود. اتصال اینترنت را بررسی کنید.' });
+      }
+    } catch {
+      setDriveStatus({ type: 'error', message: 'خطا در آپلود فایل.' });
+    }
+    setDriveUploading(false);
+  }, [driveBackup, getBackupData, getDataHash, setDriveBackup]);
 
   const handleSaveProfile = () => {
     updateUserProfile(tempProfile);
@@ -706,23 +773,96 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
           <Feather name="cloud" size={16} color="#0ea5e9" />
           <Text style={{ fontFamily: 'Vazirmatn_700Bold', fontSize: 14, color: '#1f2937' }}>پشتیبان‌گیری ابری (گوگل‌درایو)</Text>
         </View>
-        <Text style={{ fontSize: 12, color: '#6b7280', lineHeight: 18 }}>
-          با ذخیره فایل پشتیبان در گوگل‌درایو، اطلاعات شما همیشه در امان خواهد بود.
-          فایل پشتیبان را بگیرید و در گوگل‌درایو خود آپلود کنید.
-        </Text>
-        <TouchableOpacity style={styles.cloudBtn} onPress={async () => {
-          const backupObj = getBackupData();
-          const jsonString = JSON.stringify(backupObj, null, 2);
-          const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '_');
-          const fileUri = FileSystem.documentDirectory + `finance_backup_${dateStr}.json`;
-          await FileSystem.writeAsStringAsync(fileUri, jsonString, { encoding: FileSystem.EncodingType.UTF8 });
-          if (await Sharing.isAvailableAsync()) {
-            await Sharing.shareAsync(fileUri, { mimeType: 'application/json' });
-          }
-        }}>
-          <Feather name="upload-cloud" size={20} color="#0ea5e9" />
-          <Text style={{ color: '#0ea5e9', fontFamily: 'Vazirmatn_700Bold', fontSize: 12 }}>دریافت فایل و ذخیره در گوگل‌درایو</Text>
-        </TouchableOpacity>
+
+        {!driveBackup.connected ? (
+          <>
+            <Text style={{ fontSize: 12, color: '#6b7280', lineHeight: 18, marginBottom: 12 }}>
+              با اتصال به گوگل‌درایو، اطلاعات شما به‌صورت خودکار پشتیبان‌گیری می‌شود.
+            </Text>
+            <TouchableOpacity style={styles.driveConnectBtn} onPress={handleDriveLogin}>
+              <Feather name="log-in" size={20} color="#fff" />
+              <Text style={{ color: '#fff', fontFamily: 'Vazirmatn_700Bold', fontSize: 13 }}>ورود با گوگل</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <View style={{ gap: 16 }}>
+            <View style={styles.driveConnectedRow}>
+              <Feather name="check-circle" size={20} color="#10b981" />
+              <Text style={{ color: '#10b981', fontFamily: 'Vazirmatn_700Bold', fontSize: 13 }}>متصل به گوگل‌درایو</Text>
+              <TouchableOpacity onPress={handleDriveDisconnect}>
+                <Text style={{ color: '#ef4444', fontSize: 12, fontFamily: 'Vazirmatn_500Medium' }}>قطع اتصال</Text>
+              </TouchableOpacity>
+            </View>
+
+            {lastBackupTime && (
+              <Text style={{ fontSize: 12, color: '#6b7280' }}>
+                آخرین بکاپ: {lastBackupTime}
+              </Text>
+            )}
+
+            <TouchableOpacity style={styles.driveUploadBtn} onPress={handleDriveManualUpload}>
+              <Feather name="upload-cloud" size={20} color="#fff" />
+              <Text style={{ color: '#fff', fontFamily: 'Vazirmatn_700Bold', fontSize: 13 }}>ارسال دستی به گوگل‌درایو</Text>
+            </TouchableOpacity>
+
+            <View style={styles.secRow}>
+              <View style={styles.secRowLeft}>
+                <Feather name="repeat" size={20} color="#2563eb" />
+                <View>
+                  <Text style={styles.secTitle}>بکاپ خودکار</Text>
+                  <Text style={styles.secDesc}>ارسال خودکار هنگام اتصال اینترنت</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={[styles.toggleSwitch, driveBackup.autoBackup && styles.toggleSwitchActive]}
+                onPress={() => setDriveBackup({ ...driveBackup, autoBackup: !driveBackup.autoBackup })}>
+                <View style={[styles.toggleKnob, driveBackup.autoBackup && styles.toggleKnobActive]} />
+              </TouchableOpacity>
+            </View>
+
+            {driveBackup.autoBackup && (
+              <View>
+                <Text style={styles.fieldLabel}>فاصله بین بکاپ‌ها</Text>
+                <View style={styles.intervalRow}>
+                  {BACKUP_INTERVALS.map(item => (
+                    <TouchableOpacity key={item.value}
+                      style={[styles.intervalBtn, driveBackup.intervalHours === item.value && styles.intervalBtnActive]}
+                      onPress={() => setDriveBackup({ ...driveBackup, intervalHours: item.value })}>
+                      <Text style={[styles.intervalBtnText, driveBackup.intervalHours === item.value && styles.intervalBtnTextActive]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+                  پس از اتصال به اینترنت، اگر از آخرین بکاپ بیشتر از این مدت گذشته باشد و اطلاعات جدیدی ثبت شده باشد، خودکار آپلود می‌شود.
+                </Text>
+              </View>
+            )}
+
+            {driveUploading && (
+              <View style={styles.driveUploadingRow}>
+                <ActivityIndicator size="small" color="#2563eb" />
+                <Text style={{ fontSize: 12, color: '#2563eb' }}>در حال آپلود...</Text>
+              </View>
+            )}
+
+            {driveStatus && (
+              <View style={[styles.importStatus, {
+                backgroundColor: driveStatus.type === 'success' ? '#ecfdf5' : '#fef2f2',
+                borderColor: driveStatus.type === 'success' ? '#a7f3d0' : '#fecaca',
+              }]}>
+                <View style={[styles.importStatusDot, { backgroundColor: driveStatus.type === 'success' ? '#10b981' : '#ef4444' }]} />
+                <Text style={{ fontSize: 12, color: driveStatus.type === 'success' ? '#064e3b' : '#991b1b', flex: 1 }}>
+                  {driveStatus.message}
+                </Text>
+              </View>
+            )}
+
+            <Text style={{ fontSize: 11, color: '#9ca3af', lineHeight: 16 }}>
+              تنظیمات گوگل‌درایو به بکاپ اضافه نمی‌شود و فقط روی این دستگاه ذخیره می‌گردد.
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -1027,6 +1167,15 @@ const styles = StyleSheet.create({
   importStatusDot: { width: 20, height: 20, borderRadius: 10, marginTop: 2},
   importStatusTitle: { fontFamily: 'Vazirmatn_700Bold', fontSize: 12 },
   cloudBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderWidth: 1, borderColor: '#bae6fd', borderRadius: 16, backgroundColor: '#f0f9ff' },
+  driveConnectBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#2563eb', borderRadius: 16, paddingVertical: 14 },
+  driveConnectedRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  driveUploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#059669', borderRadius: 16, paddingVertical: 14 },
+  driveUploadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 8 },
+  intervalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  intervalBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: '#f3f4f6' },
+  intervalBtnActive: { backgroundColor: '#2563eb' },
+  intervalBtnText: { fontSize: 12, fontFamily: 'Vazirmatn_600SemiBold', color: '#6b7280' },
+  intervalBtnTextActive: { color: '#fff' },
 
   secCard: { backgroundColor: '#fff', borderRadius: 20, padding: 20, gap: 16, borderWidth: 1, borderColor: '#f3f4f6' },
   secRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

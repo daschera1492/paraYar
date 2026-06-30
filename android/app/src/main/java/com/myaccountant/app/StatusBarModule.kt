@@ -11,9 +11,9 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.IBinder
-import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -105,9 +105,8 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         return "$rle${rlm}$text$pdf"
     }
 
-    private fun createDayNumberBitmap(dayNum: String): Bitmap? {
+    private fun createDayNumberBitmap(dayNum: String, size: Int = 120): Bitmap? {
         if (dayNum.isEmpty()) return null
-        val size = 120
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -115,9 +114,10 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             style = Paint.Style.FILL
         }
         canvas.drawCircle(size / 2f, size / 2f, size / 2f, circlePaint)
+        val textSize = size * 0.45f
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            textSize = 52f
+            this.textSize = textSize
             textAlign = Paint.Align.CENTER
             isFakeBoldText = true
         }
@@ -163,30 +163,46 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle(titleText)
-            .setContentText(summaryText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setOngoing(true)
-            .setContentIntent(pendingOpenIntent)
-            .setShowWhen(true)
+        val dayBitmap = if (dayNum.isNotEmpty()) createDayNumberBitmap(dayNum) else null
+        val largeBitmap = if (dayNum.isNotEmpty()) createDayNumberBitmap(dayNum, 120) else null
 
-        if (dayNum.isNotEmpty()) {
-            val dayBitmap = createDayNumberBitmap(dayNum)
-            if (dayBitmap != null) {
-                builder.setLargeIcon(dayBitmap)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && dayBitmap != null) {
+            val builder = Notification.Builder(context, CHANNEL_ID)
+                .setContentTitle(titleText)
+                .setContentText(summaryText)
+                .setStyle(Notification.BigTextStyle().bigText(contentText))
+                .setPriority(Notification.PRIORITY_MIN)
+                .setOngoing(true)
+                .setContentIntent(pendingOpenIntent)
+                .setShowWhen(true)
+                .setSmallIcon(Icon.createWithBitmap(dayBitmap))
+            if (largeBitmap != null) {
+                builder.setLargeIcon(largeBitmap)
             }
-            builder.setSmallIcon(android.R.drawable.ic_menu_myplaces)
+            val notification = builder.build()
+            try {
+                manager.notify(NOTIFICATION_ID, notification)
+                StatusBarService.updateNotification(notification)
+            } catch (_: Exception) {}
         } else {
-            builder.setSmallIcon(android.R.drawable.ic_popup_reminder)
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle(titleText)
+                .setContentText(summaryText)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setOngoing(true)
+                .setContentIntent(pendingOpenIntent)
+                .setShowWhen(true)
+                .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            if (largeBitmap != null) {
+                builder.setLargeIcon(largeBitmap)
+            }
+            val notification = builder.build()
+            try {
+                manager.notify(NOTIFICATION_ID, notification)
+                StatusBarService.updateNotification(notification)
+            } catch (_: Exception) {}
         }
-
-        val notification = builder.build()
-        try {
-            manager.notify(NOTIFICATION_ID, notification)
-            StatusBarService.updateNotification(notification)
-        } catch (_: Exception) {}
     }
 
     private fun createChannel(context: Context) {
@@ -222,7 +238,7 @@ class StatusBarService : Service() {
             manager.createNotificationChannel(channel)
         }
         return NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(android.R.drawable.ic_menu_myplaces)
+            .setSmallIcon(android.R.drawable.ic_popup_reminder)
             .setContentTitle("حسابدار من")
             .setContentText("...")
             .setOngoing(true)

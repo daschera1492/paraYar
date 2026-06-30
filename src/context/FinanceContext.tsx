@@ -4,10 +4,11 @@ import { Platform, NativeModules } from 'react-native';
 import {
   Transaction, Reminder, Category, UserProfile, BackupData, DEFAULT_CATEGORIES,
   Account, RecurringTransaction, SavingsGoal, Debt, AppLock, DEFAULT_ACCOUNTS,
-  StatusBarConfig, DEFAULT_STATUS_BAR_CONFIG,
+  StatusBarConfig, DEFAULT_STATUS_BAR_CONFIG, DriveBackupConfig, DEFAULT_DRIVE_BACKUP,
 } from '../types';
 import { generateId, gregorianToShamsi, SHAMSI_MONTH_NAMES, formatCurrency } from '../utils';
 import { updateStatusBar, startStatusBarService, stopStatusBarService } from '../services/StatusBarService';
+import { hashData } from '../services/DriveService';
 
 interface FinanceContextType {
   transactions: Transaction[];
@@ -67,6 +68,10 @@ interface FinanceContextType {
   // Status Bar
   statusBarConfig: StatusBarConfig;
   setStatusBarConfig: (config: StatusBarConfig) => void;
+  // Drive Backup
+  driveBackup: DriveBackupConfig;
+  setDriveBackup: (config: DriveBackupConfig) => void;
+  getDataHash: () => string;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -83,6 +88,7 @@ const KEYS = {
   debts: '@finance/debts',
   lock: '@finance/lock',
   statusBar: '@finance/statusBar',
+  driveBackup: '@finance/driveBackup',
 } as const;
 
 const DEFAULT_PROFILE: UserProfile = { name: 'کاربر', phone: '', email: '' };
@@ -106,6 +112,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [appLock, setAppLockState] = useState<AppLock>(DEFAULT_LOCK);
   const [statusBarConfig, setStatusBarConfigState] = useState<StatusBarConfig>(DEFAULT_STATUS_BAR_CONFIG);
+  const [driveBackup, setDriveBackupState] = useState<DriveBackupConfig>(DEFAULT_DRIVE_BACKUP);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -113,7 +120,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       try {
         const [
           txData, catData, budData, remData, profData,
-          accData, recData, goalData, debtData, lockData, sbData,
+          accData, recData, goalData, debtData, lockData, sbData, dbData,
         ] = await Promise.all([
           AsyncStorage.getItem(KEYS.transactions),
           AsyncStorage.getItem(KEYS.categories),
@@ -126,6 +133,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           AsyncStorage.getItem(KEYS.debts),
           AsyncStorage.getItem(KEYS.lock),
           AsyncStorage.getItem(KEYS.statusBar),
+          AsyncStorage.getItem(KEYS.driveBackup),
         ]);
         if (txData) {
           let txs: Transaction[] = JSON.parse(txData);
@@ -148,6 +156,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         if (debtData) setDebts(JSON.parse(debtData));
         if (lockData) setAppLockState(JSON.parse(lockData));
         if (sbData) setStatusBarConfigState(JSON.parse(sbData));
+        if (dbData) setDriveBackupState({ ...DEFAULT_DRIVE_BACKUP, ...JSON.parse(dbData) });
       } catch {}
       setIsLoaded(true);
     })();
@@ -168,6 +177,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => { if (isLoaded) persist(KEYS.debts, debts); }, [debts, isLoaded]);
   useEffect(() => { if (isLoaded) persist(KEYS.lock, appLock); }, [appLock, isLoaded]);
   useEffect(() => { if (isLoaded) persist(KEYS.statusBar, statusBarConfig); }, [statusBarConfig, isLoaded]);
+  useEffect(() => { if (isLoaded) persist(KEYS.driveBackup, driveBackup); }, [driveBackup, isLoaded]);
 
   useEffect(() => {
     if (!isLoaded || Platform.OS !== 'android') return;
@@ -432,6 +442,17 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setStatusBarConfigState(config);
   }, []);
 
+  const setDriveBackup = useCallback((config: DriveBackupConfig) => {
+    setDriveBackupState(config);
+  }, []);
+
+  const getDataHash = useCallback((): string => {
+    return hashData({
+      transactions, budgets, categories, reminders, userProfile,
+      accounts, recurringTransactions, savingsGoals, debts, appLock, statusBarConfig,
+    });
+  }, [transactions, budgets, categories, reminders, userProfile, accounts, recurringTransactions, savingsGoals, debts, appLock, statusBarConfig]);
+
   const now = new Date();
   const currentMonthTransactions = useMemo(() => transactions.filter(t => {
     const d = new Date(t.date);
@@ -454,9 +475,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     return {
       transactions, budgets, categories, reminders, userProfile,
       accounts, recurringTransactions, savingsGoals, debts, appLock, statusBarConfig,
+      driveBackup,
       exportedAt: new Date().toISOString()
     };
-  }, [transactions, budgets, categories, reminders, userProfile, accounts, recurringTransactions, savingsGoals, debts, appLock, statusBarConfig]);
+  }, [transactions, budgets, categories, reminders, userProfile, accounts, recurringTransactions, savingsGoals, debts, appLock, statusBarConfig, driveBackup]);
 
   const validateArray = (arr: any, checkFields: string[]): boolean => {
     if (!Array.isArray(arr)) return false;
@@ -494,6 +516,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value: FinanceContextType = {
+    driveBackup, setDriveBackup, getDataHash,
     transactions, addTransaction, updateTransaction, deleteTransaction,
     totalBalance, monthlyIncome, monthlyExpense,
     budgets, setCategoryBudget,
