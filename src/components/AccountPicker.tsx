@@ -11,20 +11,29 @@ interface AccountPickerProps {
   onSelect: (id: string) => void;
   label: string;
   excludeId?: string;
+  showAll?: boolean;
 }
 
-export default function AccountPicker({ selectedId, onSelect, label, excludeId }: AccountPickerProps) {
+export default function AccountPicker({ selectedId, onSelect, label, excludeId, showAll }: AccountPickerProps) {
   const { accounts, getAccountBalance } = useFinance();
   const [open, setOpen] = useState(false);
 
-  const selected = accounts.find(a => a.id === selectedId);
   const filtered = excludeId ? accounts.filter(a => a.id !== excludeId) : accounts;
+
+  const selected = selectedId === 'all'
+    ? null
+    : accounts.find(a => a.id === selectedId);
 
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <TouchableOpacity style={styles.pickerBtn} onPress={() => setOpen(true)} activeOpacity={0.7}>
-        {selected ? (
+        {selectedId === 'all' ? (
+          <View style={styles.pickerRow}>
+            <Text style={styles.pickerText}>همه حساب‌ها</Text>
+            <Feather name="chevron-down" size={18} color="#9ca3af" />
+          </View>
+        ) : selected ? (
           <View style={styles.pickerRow}>
             <View style={[styles.dot, { backgroundColor: selected.color }]} />
             <Text style={styles.pickerText}>{selected.name}</Text>
@@ -45,6 +54,15 @@ export default function AccountPicker({ selectedId, onSelect, label, excludeId }
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.list}>
+              {showAll && (
+                <TouchableOpacity style={[styles.card, selectedId === 'all' && styles.cardSelected]}
+                  onPress={() => { onSelect('all'); setOpen(false); }}>
+                  <Text style={[styles.cardName, { flex: 1 }]}>همه حساب‌ها</Text>
+                  {selectedId === 'all' && (
+                    <Feather name="check-circle" size={20} color="#2563eb" />
+                  )}
+                </TouchableOpacity>
+              )}
               {filtered.map(acct => {
                 const balance = getAccountBalance(acct.id);
                 return (

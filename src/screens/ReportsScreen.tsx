@@ -4,6 +4,8 @@ import { Feather } from '@expo/vector-icons';
 import { BarChart, LineChart } from 'react-native-chart-kit';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, formatMonthYear, formatShortMonth, gregorianToShamsi, SHAMSI_MONTH_NAMES } from '../utils';
+import PeriodPicker from '../components/PeriodPicker';
+import AccountPicker from '../components/AccountPicker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_WIDTH = SCREEN_WIDTH - 24 * 2 - 24 * 2;
@@ -130,38 +132,14 @@ export default function ReportsScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>گزارش‌های مالی</Text>
-        <View style={styles.badge}><Text style={styles.badgeText}>{period === 'month' ? 'این ماه' : period === '3months' ? '۳ ماهه' : period === '6months' ? '۶ ماهه' : 'امسال'}</Text></View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-        <TouchableOpacity style={[styles.filterBtn, period === 'month' && styles.filterBtnActive]} onPress={() => setPeriod('month')}>
-          <Text style={[styles.filterBtnText, period === 'month' && { color: '#fff' }]}>این ماه</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.filterBtn, period === '3months' && styles.filterBtnActive]} onPress={() => setPeriod('3months')}>
-          <Text style={[styles.filterBtnText, period === '3months' && { color: '#fff' }]}>۳ ماهه</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.filterBtn, period === '6months' && styles.filterBtnActive]} onPress={() => setPeriod('6months')}>
-          <Text style={[styles.filterBtnText, period === '6months' && { color: '#fff' }]}>۶ ماهه</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.filterBtn, period === 'year' && styles.filterBtnActive]} onPress={() => setPeriod('year')}>
-          <Text style={[styles.filterBtnText, period === 'year' && { color: '#fff' }]}>امسال</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      {accounts.length > 1 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          <TouchableOpacity style={[styles.filterBtn, selectedAccount === 'all' && styles.filterBtnActive]}
-            onPress={() => setSelectedAccount('all')}>
-            <Text style={[styles.filterBtnText, selectedAccount === 'all' && { color: '#fff' }]}>همه حساب‌ها</Text>
-          </TouchableOpacity>
-          {accounts.map(a => (
-            <TouchableOpacity key={a.id} style={[styles.filterBtn, selectedAccount === a.id && { backgroundColor: a.color }]}
-              onPress={() => setSelectedAccount(a.id)}>
-              <Text style={[styles.filterBtnText, selectedAccount === a.id && { color: '#fff' }]}>{a.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
+      <View style={styles.pickersRow}>
+        <PeriodPicker selected={period} onSelect={setPeriod} />
+        <View style={{ flex: 1 }}>
+          <AccountPicker label="حساب" selectedId={selectedAccount} onSelect={setSelectedAccount} showAll />
+        </View>
+      </View>
 
       <View style={styles.statsRow}>
         <View style={[styles.statCard, { borderLeftColor: '#10b981' }]}>
@@ -323,15 +301,10 @@ export default function ReportsScreen() {
 const styles = StyleSheet.create({
   container: { fontFamily: 'Vazirmatn_400Regular', flex: 1, backgroundColor: '#f8fafc'},
   content: { fontFamily: 'Vazirmatn_400Regular', padding: 24, paddingBottom: 140},
-  header: { fontFamily: 'Vazirmatn_400Regular', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 8},
+  header: { fontFamily: 'Vazirmatn_400Regular', marginBottom: 8, marginTop: 8},
   headerTitle: { fontSize: 20, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937' },
-  badge: { fontFamily: 'Vazirmatn_400Regular', backgroundColor: '#2563eb', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20},
-  badgeText: { fontSize: 13, fontFamily: 'Vazirmatn_500Medium', color: '#fff' },
 
-  filterRow: { flexDirection: 'row', gap: 8, paddingVertical: 8 },
-  filterBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f3f4f6' },
-  filterBtnActive: { backgroundColor: '#2563eb' },
-  filterBtnText: { fontSize: 12, fontFamily: 'Vazirmatn_600SemiBold', color: '#6b7280' },
+  pickersRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
 
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 14, borderLeftWidth: 3, borderWidth: 1, borderColor: '#f3f4f6' },
