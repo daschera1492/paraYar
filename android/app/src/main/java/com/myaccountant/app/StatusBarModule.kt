@@ -14,6 +14,7 @@ import android.graphics.Paint
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.graphics.drawable.IconCompat
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
@@ -29,6 +30,46 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         private var lastIncome = ""
         private var lastExpense = ""
         private var lastReminders = emptyList<String>()
+
+        fun toPersianDigits(str: String): String {
+            val sb = StringBuilder(str)
+            for (i in sb.indices) {
+                when (sb[i]) {
+                    '0' -> sb[i] = '\u06F0'
+                    '1' -> sb[i] = '\u06F1'
+                    '2' -> sb[i] = '\u06F2'
+                    '3' -> sb[i] = '\u06F3'
+                    '4' -> sb[i] = '\u06F4'
+                    '5' -> sb[i] = '\u06F5'
+                    '6' -> sb[i] = '\u06F6'
+                    '7' -> sb[i] = '\u06F7'
+                    '8' -> sb[i] = '\u06F8'
+                    '9' -> sb[i] = '\u06F9'
+                }
+            }
+            return sb.toString()
+        }
+
+        fun createSmallDayIcon(dayNum: String): Bitmap {
+            val size = 64
+            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#4f46e5")
+                style = Paint.Style.FILL
+            }
+            canvas.drawCircle(size / 2f, size / 2f, size / 2f, bgPaint)
+            val textSize = size * 0.5f
+            val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                this.textSize = textSize
+                textAlign = Paint.Align.CENTER
+                isFakeBoldText = true
+            }
+            val yPos = size / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
+            canvas.drawText(toPersianDigits(dayNum), size / 2f, yPos, textPaint)
+            return bitmap
+        }
 
         fun startService(context: Context) {
             try {
@@ -76,25 +117,6 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         try { manager.cancel(NOTIFICATION_ID) } catch (_: Exception) {}
         stopService(context)
-    }
-
-    private fun toPersianDigits(str: String): String {
-        val sb = StringBuilder(str)
-        for (i in sb.indices) {
-            when (sb[i]) {
-                '0' -> sb[i] = '\u06F0'
-                '1' -> sb[i] = '\u06F1'
-                '2' -> sb[i] = '\u06F2'
-                '3' -> sb[i] = '\u06F3'
-                '4' -> sb[i] = '\u06F4'
-                '5' -> sb[i] = '\u06F5'
-                '6' -> sb[i] = '\u06F6'
-                '7' -> sb[i] = '\u06F7'
-                '8' -> sb[i] = '\u06F8'
-                '9' -> sb[i] = '\u06F9'
-            }
-        }
-        return sb.toString()
     }
 
     private fun rtlLine(text: String): String {
@@ -164,6 +186,7 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         )
 
         val largeBitmap = if (dayNum.isNotEmpty()) createDayNumberBitmap(dayNum) else null
+        val smallBitmap = if (dayNum.isNotEmpty()) createSmallDayIcon(dayNum) else null
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(titleText)
@@ -173,7 +196,11 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             .setOngoing(true)
             .setContentIntent(pendingOpenIntent)
             .setShowWhen(true)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+        if (smallBitmap != null) {
+            builder.setSmallIcon(IconCompat.createWithBitmap(smallBitmap))
+        } else {
+            builder.setSmallIcon(android.R.drawable.ic_popup_reminder)
+        }
         if (largeBitmap != null) {
             builder.setLargeIcon(largeBitmap)
         }
@@ -216,8 +243,14 @@ class StatusBarService : Service() {
             val channel = NotificationChannel(channelId, "وضعیت مالی", NotificationManager.IMPORTANCE_LOW)
             manager.createNotificationChannel(channel)
         }
+        val todayDay = run {
+            val cal = java.util.Calendar.getInstance()
+            val dayNum = cal.get(java.util.Calendar.DAY_OF_MONTH)
+            dayNum.toString()
+        }
+        val defaultSmallBitmap = StatusBarModule.createSmallDayIcon(todayDay)
         return NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setSmallIcon(IconCompat.createWithBitmap(defaultSmallBitmap))
             .setContentTitle("حسابدار من")
             .setContentText("...")
             .setOngoing(true)
