@@ -1,10 +1,11 @@
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { Platform } from 'react-native';
 
 const WEB_CLIENT_ID = '542220749719-llq63d63hn9vt8miij87uce075kpnhv2.apps.googleusercontent.com';
+const ANDROID_CLIENT_ID = '542220749719-ghdh3fgjol1un209i2mc22gqp4qcdtqf.apps.googleusercontent.com';
 
 GoogleSignin.configure({
   webClientId: WEB_CLIENT_ID,
+  androidClientId: ANDROID_CLIENT_ID,
   scopes: ['https://www.googleapis.com/auth/drive.file'],
   offlineAccess: true,
 });
