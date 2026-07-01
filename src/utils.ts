@@ -63,6 +63,19 @@ export function parseBankSMS(text: string): ParsedSMS | null {
     { name: 'بانک مسکن', regex: /(مسکن|maskan)/i },
     { name: 'بانک آینده', regex: /(آینده|ayandeh)/i },
     { name: 'بانک شهر', regex: /(شهر|shahr)/i },
+    { name: 'اقتصاد نوین', regex: /(اقتصاد نوین|en bank|eghtesad.?novin)/i },
+    { name: 'بانک سینا', regex: /(سینا|sina)/i },
+    { name: 'بانک سرمایه', regex: /(سرمایه|sarmaye)/i },
+    { name: 'بانک دی', regex: /(بانک دی|day bank)/i },
+    { name: 'کارآفرین', regex: /(کارآفرین|karafarin)/i },
+    { name: 'بانک خاورمیانه', regex: /(خاورمیانه|middle.?east)/i },
+    { name: 'بانک گردشگری', regex: /(گردشگری|tourism)/i },
+    { name: 'بانک ایران زمین', regex: /(ایران زمین|iran.?zamin)/i },
+    { name: 'بانک توسعه صادرات', regex: /(توسعه صادرات|tosee.?saderat)/i },
+    { name: 'پست بانک', regex: /(پست بانک|post.?bank)/i },
+    { name: 'بانک حکمت ایرانیان', regex: /(حکمت|hekmat)/i },
+    { name: 'توسعه تعاون', regex: /(توسعه تعاون|tosee.?taavon)/i },
+    { name: 'بانک قوامین', regex: /(قوامین|ghavvamin)/i },
   ];
 
   for (const pattern of bankPatterns) {
@@ -73,8 +86,8 @@ export function parseBankSMS(text: string): ParsedSMS | null {
   }
 
   let type: 'income' | 'expense' = 'expense';
-  const incomeKeywords = ['واریز', 'انتقال به', 'اضافه', 'افزایش', '+', 'دریافت', 'کارت به کارت به'];
-  const expenseKeywords = ['برداشت', 'خرید', 'انتقال از', 'پرداخت', 'کاهش', 'قبض', 'کارتخوان', 'خودپرداز', '-', 'کارت به کارت از', 'کسر'];
+  const incomeKeywords = ['واریز', 'انتقال به', 'اضافه', 'افزایش', '+', 'دریافت', 'کارت به کارت به', 'بستانکار', 'شارژ حساب'];
+  const expenseKeywords = ['برداشت', 'خرید', 'انتقال از', 'پرداخت', 'کاهش', 'قبض', 'کارتخوان', 'خودپرداز', '-', 'کارت به کارت از', 'کسر', 'پوز', 'سایر پرداخت'];
 
   let incomeScore = 0;
   let expenseScore = 0;
@@ -105,8 +118,9 @@ export function parseBankSMS(text: string): ParsedSMS | null {
 
   let amount = 0;
   const amtRegexes = [
-    /(?:مبلغ|واریز|برداشت|خرید|پرداخت|انتقال)[^\d]*(\d[\d,]*\d)/,
-    /(\d[\d,]*\d)\s*(?:ریال|تومان)/
+    /(?:مبلغ|واریز|برداشت|خرید|پرداخت|انتقال|کسر|اضافه)[^\d]*(\d[\d,]*\d)/,
+    /(\d[\d,]*\d)\s*(?:ریال|تومان)/,
+    /مبلغ\s*\(?(?:ریال|تومان)\)?\s*:?\s*(\d[\d,]*\d)/,
   ];
 
   let amtMatch: RegExpMatchArray | null = null;

@@ -34,8 +34,17 @@ object SmsParser {
         var income = 0
         var expense = 0
 
-        val incomeKeywords = listOf("واریز", "دریافت", "سپرده", "وام", "پرداخت شده", "+", "افزایش")
-        val expenseKeywords = listOf("برداشت", "خرید", "پرداخت", "انتقال", "سود", "کارمزد", "-", "کاهش")
+        val incomeKeywords = listOf(
+            "واریز", "دریافت", "سپرده", "وام پرداختی", "وام",
+            "+", "افزایش", "اضافه شدن", "بستانکار", "شارژ حساب",
+            "انتقال به", "کارت به کارت به"
+        )
+        val expenseKeywords = listOf(
+            "برداشت", "خرید", "پرداخت", "انتقال از",
+            "سود", "کارمزد", "-", "کاهش", "کسر",
+            "قبض", "کارتخوان", "خودپرداز", "پوز",
+            "کارت به کارت از", "سایر پرداخت‌ها"
+        )
 
         for (kw in incomeKeywords) {
             if (text.contains(kw)) income += 2
@@ -49,13 +58,16 @@ object SmsParser {
 
     private fun extractAmount(text: String): Long {
         val amountPatterns = listOf(
-            Regex("""مبلغ\s*([\d]+)"""),
-            Regex("""واریز\s*([\d]+)"""),
-            Regex("""برداشت\s*([\d]+)"""),
-            Regex("""خرید\s*([\d]+)"""),
-            Regex("""پرداخت\s*([\d]+)"""),
-            Regex("""انتقال\s*([\d]+)"""),
             Regex("""مبلغ\s*:?\s*([\d]+)"""),
+            Regex("""واریز\s*:?\s*([\d]+)"""),
+            Regex("""برداشت\s*:?\s*([\d]+)"""),
+            Regex("""خرید\s*:?\s*([\d]+)"""),
+            Regex("""پرداخت\s*:?\s*([\d]+)"""),
+            Regex("""انتقال\s*:?\s*([\d]+)"""),
+            Regex("""کسر\s*:?\s*([\d]+)"""),
+            Regex("""اضافه\s*:?\s*([\d]+)"""),
+            Regex("""مبلغ\s*\(?ریال\)?\s*:?\s*([\d]+)"""),
+            Regex("""مبلغ\s*\(?تومان\)?\s*:?\s*([\d]+)"""),
         )
 
         for (pattern in amountPatterns) {
@@ -69,7 +81,7 @@ object SmsParser {
 
         val allNumbers = Regex("""([\d]+)""").findAll(text)
             .map { it.groupValues[1].toLongOrNull() ?: 0 }
-            .filter { it > 1000 }
+            .filter { it in 1000..999_999_999 }
             .toList()
 
         return allNumbers.maxOrNull() ?: 0

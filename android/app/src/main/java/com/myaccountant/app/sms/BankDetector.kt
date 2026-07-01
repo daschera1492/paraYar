@@ -22,6 +22,7 @@ object BankDetector {
         "300055" to BankInfo("بانک پارسیان", "Parsian"),
         "50001099" to BankInfo("بانک پارسیان", "Parsian"),
         "300054" to BankInfo("بانک پارسیان", "Parsian"),
+        "30007" to BankInfo("بانک پارسیان", "Parsian"),
         "300066" to BankInfo("بانک رفاه", "Refah"),
         "300044" to BankInfo("بانک رفاه", "Refah"),
         "300014" to BankInfo("بانک مسکن", "Maskan"),
@@ -32,6 +33,18 @@ object BankDetector {
         "1000222" to BankInfo("بانک قوامین", "Ghavvamin"),
         "1000700" to BankInfo("توسعه تعاون", "ToseeTaavon"),
         "100070007" to BankInfo("توسعه تعاون", "ToseeTaavon"),
+        "10003610" to BankInfo("بانک خاورمیانه", "MiddleEast"),
+        "10004405" to BankInfo("بانک گردشگری", "Tourism"),
+        "10004609" to BankInfo("بانک ایران زمین", "IranZamin"),
+        "10003996" to BankInfo("بانک دی", "Day"),
+        "10003565" to BankInfo("بانک کارآفرین", "Karafarin"),
+        "10007622" to BankInfo("بانک شهر", "Shahr"),
+        "10001222" to BankInfo("بانک حکمت ایرانیان", "Hekmat"),
+        "10004055" to BankInfo("بانک توسعه صادرات", "ToseeSaderat"),
+        "10003837" to BankInfo("موسسه اعتباری ملل", "Melal"),
+        "10003833" to BankInfo("موسسه اعتباری نور", "Noor"),
+        "10004200" to BankInfo("موسسه اعتباری کوثر", "Kosar"),
+        "10004455" to BankInfo("پست بانک", "PostBank"),
     )
 
     private val alphaNameMap = mapOf(
@@ -75,6 +88,17 @@ object BankDetector {
         "mehr iran" to BankInfo("مهر ایران", "MehrIran"),
         "karafarin" to BankInfo("کارآفرین", "Karafarin"),
         "shahr" to BankInfo("بانک شهر", "Shahr"),
+        "middle east" to BankInfo("بانک خاورمیانه", "MiddleEast"),
+        "middleeast" to BankInfo("بانک خاورمیانه", "MiddleEast"),
+        "tourism" to BankInfo("بانک گردشگری", "Tourism"),
+        "iran zamin" to BankInfo("بانک ایران زمین", "IranZamin"),
+        "iranzamin" to BankInfo("بانک ایران زمین", "IranZamin"),
+        "hekmat" to BankInfo("بانک حکمت ایرانیان", "Hekmat"),
+        "tosee saderat" to BankInfo("بانک توسعه صادرات", "ToseeSaderat"),
+        "post bank" to BankInfo("پست بانک", "PostBank"),
+        "postbank" to BankInfo("پست بانک", "PostBank"),
+        "melal" to BankInfo("موسسه اعتباری ملل", "Melal"),
+        "kosar" to BankInfo("موسسه اعتباری کوثر", "Kosar"),
     )
 
     fun detect(sender: String?): String? {

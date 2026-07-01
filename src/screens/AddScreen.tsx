@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Image,
+  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Image, Platform, PermissionsAndroid,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
@@ -70,6 +70,24 @@ export default function AddScreen({ onClose, initialSmsData }: AddScreenProps) {
     onClose();
   };
 
+  const requestSmsPermission = async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return false;
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_SMS,
+        {
+          title: 'دسترسی به پیامک',
+          message: 'برای شناسایی خودکار پیامک‌های بانکی، لطفاً اجازه دسترسی به پیامک‌ها را بدهید.',
+          buttonPositive: 'اجازه',
+          buttonNegative: 'رد',
+        },
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch {
+      return false;
+    }
+  };
+
   const handlePasteSMS = async () => {
     try {
       const text = await Clipboard.getStringAsync();
@@ -84,6 +102,13 @@ export default function AddScreen({ onClose, initialSmsData }: AddScreenProps) {
     } catch {
       Alert.alert('خطا', 'دسترسی به کلیپ‌بورد امکان‌پذیر نیست.');
       setShowSmsArea(true);
+    }
+  };
+
+  const handleOpenSmsSection = () => {
+    setShowSmsArea(!showSmsArea);
+    if (!showSmsArea) {
+      requestSmsPermission();
     }
   };
 
@@ -180,7 +205,7 @@ export default function AddScreen({ onClose, initialSmsData }: AddScreenProps) {
                   </View>
                   <Text style={styles.smsTitle}>پردازشگر خودکار پیامک بانکی</Text>
                 </View>
-                <TouchableOpacity onPress={() => setShowSmsArea(!showSmsArea)}>
+                <TouchableOpacity onPress={handleOpenSmsSection}>
                   <Text style={styles.smsToggle}>{showSmsArea ? 'بستن' : 'باز کردن'}</Text>
                 </TouchableOpacity>
               </View>

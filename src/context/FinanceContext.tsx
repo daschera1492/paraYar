@@ -182,8 +182,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoaded || Platform.OS !== 'android') return;
     const total = transactions.reduce((s, t) => s + t.amount * (t.type === 'income' ? 1 : -1), 0);
-    const monthStr = new Date().toISOString().slice(0, 7);
-    const monthTxs = transactions.filter(t => t.date.startsWith(monthStr));
+    const nowW = new Date();
+    const nowWShamsi = gregorianToShamsi(nowW.getFullYear(), nowW.getMonth() + 1, nowW.getDate());
+    const monthTxs = transactions.filter(t => {
+      const d = new Date(t.date);
+      const s = gregorianToShamsi(d.getFullYear(), d.getMonth() + 1, d.getDate());
+      return s.year === nowWShamsi.year && s.month === nowWShamsi.month;
+    });
     const inc = monthTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const exp = monthTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
     try {
@@ -454,9 +459,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, [transactions, budgets, categories, reminders, userProfile, accounts, recurringTransactions, savingsGoals, debts, appLock, statusBarConfig]);
 
   const now = new Date();
+  const nowShamsi = gregorianToShamsi(now.getFullYear(), now.getMonth() + 1, now.getDate());
   const currentMonthTransactions = useMemo(() => transactions.filter(t => {
     const d = new Date(t.date);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    const s = gregorianToShamsi(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    return s.year === nowShamsi.year && s.month === nowShamsi.month;
   }), [transactions]);
 
   const monthlyIncome = useMemo(() => currentMonthTransactions

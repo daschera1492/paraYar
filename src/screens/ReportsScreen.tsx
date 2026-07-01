@@ -33,30 +33,34 @@ export default function ReportsScreen() {
     if (selectedAccount !== 'all') {
       filtered = filtered.filter(t => t.accountId === selectedAccount);
     }
+    const nowS = gregorianToShamsi(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const nowMonths = nowS.year * 12 + nowS.month;
     switch (period) {
       case 'month':
         return filtered.filter(t => {
           const d = new Date(t.date);
-          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+          const s = gregorianToShamsi(d.getFullYear(), d.getMonth() + 1, d.getDate());
+          return s.year === nowS.year && s.month === nowS.month;
         });
       case '3months':
         return filtered.filter(t => {
           const d = new Date(t.date);
-          const threeMonthsAgo = new Date(now);
-          threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-          return d >= threeMonthsAgo && d <= now;
+          const s = gregorianToShamsi(d.getFullYear(), d.getMonth() + 1, d.getDate());
+          const txMonths = s.year * 12 + s.month;
+          return txMonths >= nowMonths - 3 && txMonths <= nowMonths;
         });
       case '6months':
         return filtered.filter(t => {
           const d = new Date(t.date);
-          const sixMonthsAgo = new Date(now);
-          sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-          return d >= sixMonthsAgo && d <= now;
+          const s = gregorianToShamsi(d.getFullYear(), d.getMonth() + 1, d.getDate());
+          const txMonths = s.year * 12 + s.month;
+          return txMonths >= nowMonths - 6 && txMonths <= nowMonths;
         });
       case 'year':
         return filtered.filter(t => {
           const d = new Date(t.date);
-          return d.getFullYear() === now.getFullYear();
+          const s = gregorianToShamsi(d.getFullYear(), d.getMonth() + 1, d.getDate());
+          return s.year === nowS.year;
         });
       default:
         return filtered;

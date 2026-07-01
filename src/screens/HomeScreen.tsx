@@ -36,30 +36,37 @@ export default function HomeScreen({ onEdit, onToggleDrawer }: HomeScreenProps) 
   const [showCalendarPicker, setShowCalendarPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const calendarDays = useMemo(() => generateLast14Days(), []);
+  const shamsiNow = useMemo(() => {
+    const n = new Date();
+    return gregorianToShamsi(n.getFullYear(), n.getMonth() + 1, n.getDate());
+  }, []);
+
   const categoryExpenses = useMemo(() => {
-    const now = new Date();
     const exps: Record<string, number> = {};
     transactions.forEach(tx => {
+      if (tx.type !== 'expense') return;
       const d = new Date(tx.date);
-      if (tx.type === 'expense' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+      const s = gregorianToShamsi(d.getFullYear(), d.getMonth() + 1, d.getDate());
+      if (s.year === shamsiNow.year && s.month === shamsiNow.month) {
         exps[tx.categoryId] = (exps[tx.categoryId] || 0) + tx.amount;
       }
     });
     return exps;
-  }, [transactions]);
+  }, [transactions, shamsiNow]);
 
   const parentExpenses = useMemo(() => {
-    const now = new Date();
     const exps: Record<string, number> = { loans_installments: 0, savings_investments: 0, essentials: 0 };
     transactions.forEach(tx => {
+      if (tx.type !== 'expense') return;
       const d = new Date(tx.date);
-      if (tx.type === 'expense' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+      const s = gregorianToShamsi(d.getFullYear(), d.getMonth() + 1, d.getDate());
+      if (s.year === shamsiNow.year && s.month === shamsiNow.month) {
         const cat = categories.find(c => c.id === tx.categoryId);
         if (cat?.parentCategoryId) exps[cat.parentCategoryId] = (exps[cat.parentCategoryId] || 0) + tx.amount;
       }
     });
     return exps;
-  }, [transactions, categories]);
+  }, [transactions, categories, shamsiNow]);
 
   const budgetItems = useMemo(() => {
     const items: { id: string; name: string; spent: number; limit: number; percentage: number; color: string }[] = [];
@@ -119,18 +126,18 @@ export default function HomeScreen({ onEdit, onToggleDrawer }: HomeScreenProps) 
 
   const budgetTransactions = useMemo(() => {
     if (!budgetDetail) return [];
-    const now = new Date();
     const isParent = PARENT_CATEGORIES.some(p => p.id === budgetDetail.id);
     return transactions.filter(tx => {
       const d = new Date(tx.date);
-      if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return false;
+      const s = gregorianToShamsi(d.getFullYear(), d.getMonth() + 1, d.getDate());
+      if (s.year !== shamsiNow.year || s.month !== shamsiNow.month) return false;
       if (isParent) {
         const cat = categories.find(c => c.id === tx.categoryId);
         return cat?.parentCategoryId === budgetDetail.id;
       }
       return tx.categoryId === budgetDetail.id;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [budgetDetail, transactions, categories]);
+  }, [budgetDetail, transactions, categories, shamsiNow]);
 
   const accountSummaries = useMemo(() => {
     return accounts.map(a => ({
