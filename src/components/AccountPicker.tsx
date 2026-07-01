@@ -34,11 +34,11 @@ export default function AccountPicker({ selectedId, onSelect, label, excludeId, 
             <Feather name="chevron-down" size={18} color="#9ca3af" />
           </View>
         ) : selected ? (
-          <View style={styles.pickerRow}>
-            <View style={[styles.dot, { backgroundColor: selected.color }]} />
-            <Text style={styles.pickerText}>{selected.name}</Text>
-            <Feather name="chevron-down" size={18} color="#9ca3af" />
-          </View>
+            <View style={styles.pickerRow}>
+              <View style={[styles.dot, { backgroundColor: selected.color }]} />
+              <Text style={styles.pickerText} numberOfLines={1} ellipsizeMode="tail">{selected.name}</Text>
+              <Feather name="chevron-down" size={18} color="#9ca3af" />
+            </View>
         ) : (
           <Text style={styles.placeholder}>انتخاب حساب...</Text>
         )}

@@ -54,7 +54,13 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             val size = 96
             val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
-            val textSize = size * 0.85f
+            val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                style = Paint.Style.STROKE
+                strokeWidth = 4f
+            }
+            canvas.drawCircle(size / 2f, size / 2f, size / 2f - 4f, borderPaint)
+            val textSize = size * 0.7f
             val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.BLACK
                 this.textSize = textSize
@@ -62,7 +68,7 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
                 isFakeBoldText = true
             }
             val yPos = size / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
-            canvas.drawText(toPersianDigits(dayNum), size / 2f, yPos, textPaint)
+            canvas.drawText(dayNum, size / 2f, yPos, textPaint)
             return bitmap
         }
 
@@ -114,35 +120,6 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         stopService(context)
     }
 
-    private fun rtlLine(text: String): String {
-        val rlm = "\u200F"
-        val rle = "\u202B"
-        val pdf = "\u202C"
-        return "$rle${rlm}$text$pdf"
-    }
-
-    private fun createDayNumberBitmap(dayNum: String): Bitmap? {
-        if (dayNum.isEmpty()) return null
-        val size = 120
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#4f46e5")
-            style = Paint.Style.FILL
-        }
-        canvas.drawCircle(size / 2f, size / 2f, size / 2f, bgPaint)
-        val textSize = size * 0.5f
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            this.textSize = textSize
-            textAlign = Paint.Align.CENTER
-            isFakeBoldText = true
-        }
-        val yPos = size / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
-        canvas.drawText(toPersianDigits(dayNum), size / 2f, yPos, textPaint)
-        return bitmap
-    }
-
     private fun updateNotification(dayNum: String = "") {
         val context = currentActivity ?: return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -153,24 +130,24 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         val expensePersian = toPersianDigits(lastExpense)
 
         val contentText = buildString {
-            append(rtlLine("\uD83D\uDCC5 $datePersian"))
+            append("\uD83D\uDCC5 $datePersian")
             append("\n")
-            append(rtlLine("\uD83D\uDCC8 دریافتی: $incomePersian تومان"))
+            append("\uD83D\uDCC8 دریافتی: $incomePersian تومان")
             append("\n")
-            append(rtlLine("\uD83D\uDCC9 پرداختی: $expensePersian تومان"))
+            append("\uD83D\uDCC9 پرداختی: $expensePersian تومان")
             if (lastReminders.isNotEmpty()) {
                 append("\n\n")
-                append(rtlLine("\uD83D\uDD14 یادآورها:"))
+                append("\uD83D\uDD14 یادآورها:")
                 for (rem in lastReminders) {
                     val remPersian = toPersianDigits(rem)
                     append("\n")
-                    append(rtlLine(remPersian))
+                    append(remPersian)
                 }
             }
         }
 
-        val titleText = rtlLine("\uD83D\uDCCA $datePersian")
-        val summaryText = rtlLine("دریافتی: $incomePersian | پرداختی: $expensePersian")
+        val titleText = "\uD83D\uDCCA $datePersian"
+        val summaryText = "دریافتی: $incomePersian | پرداختی: $expensePersian"
 
         val openIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -180,7 +157,6 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val largeBitmap = if (dayNum.isNotEmpty()) createDayNumberBitmap(dayNum) else null
         val smallBitmap = if (dayNum.isNotEmpty()) createSmallDayIcon(dayNum) else null
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -195,9 +171,6 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             builder.setSmallIcon(IconCompat.createWithBitmap(smallBitmap))
         } else {
             builder.setSmallIcon(android.R.drawable.ic_popup_reminder)
-        }
-        if (largeBitmap != null) {
-            builder.setLargeIcon(largeBitmap)
         }
         val notification = builder.build()
         try {
