@@ -48,27 +48,27 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             val persianYear = gy - 621
             val persianMonth: Int
             if (dayOfYear < 80) {
-                persianMonth = 10
-            } else if (dayOfYear < 111) {
-                persianMonth = 11
-            } else if (dayOfYear < 142) {
                 persianMonth = 12
-            } else if (dayOfYear < 173) {
+            } else if (dayOfYear < 111) {
                 persianMonth = 1
-            } else if (dayOfYear < 204) {
+            } else if (dayOfYear < 142) {
                 persianMonth = 2
-            } else if (dayOfYear < 235) {
+            } else if (dayOfYear < 173) {
                 persianMonth = 3
-            } else if (dayOfYear < 266) {
+            } else if (dayOfYear < 204) {
                 persianMonth = 4
-            } else if (dayOfYear < 296) {
+            } else if (dayOfYear < 235) {
                 persianMonth = 5
-            } else if (dayOfYear < 327) {
+            } else if (dayOfYear < 266) {
                 persianMonth = 6
-            } else if (dayOfYear < 357) {
+            } else if (dayOfYear < 296) {
                 persianMonth = 7
-            } else {
+            } else if (dayOfYear < 327) {
                 persianMonth = 8
+            } else if (dayOfYear < 357) {
+                persianMonth = 9
+            } else {
+                persianMonth = 10
             }
             return SHAMSI_MONTHS[persianMonth - 1]
         }
