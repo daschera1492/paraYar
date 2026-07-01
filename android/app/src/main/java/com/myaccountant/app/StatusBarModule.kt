@@ -11,6 +11,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Typeface
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -31,6 +32,47 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         private var lastExpense = ""
         private var lastReminders = emptyList<String>()
 
+        private val SHAMSI_MONTHS = arrayOf(
+            "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
+            "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
+        )
+
+        fun getDefaultMonthName(): String {
+            val cal = java.util.Calendar.getInstance()
+            val gy = cal.get(java.util.Calendar.YEAR)
+            val gm = cal.get(java.util.Calendar.MONTH) + 1
+            val gd = cal.get(java.util.Calendar.DAY_OF_MONTH)
+            val daysInGregorian = intArrayOf(0,31,59,90,120,151,181,212,243,273,304,334)
+            val gregDelta = if (gm > 2 && gy % 4 == 0 && (gy % 100 != 0 || gy % 400 == 0)) 1 else 0
+            val dayOfYear = daysInGregorian[gm - 1] + gd + gregDelta
+            val persianYear = gy - 621
+            val persianMonth: Int
+            if (dayOfYear < 80) {
+                persianMonth = 10
+            } else if (dayOfYear < 111) {
+                persianMonth = 11
+            } else if (dayOfYear < 142) {
+                persianMonth = 12
+            } else if (dayOfYear < 173) {
+                persianMonth = 1
+            } else if (dayOfYear < 204) {
+                persianMonth = 2
+            } else if (dayOfYear < 235) {
+                persianMonth = 3
+            } else if (dayOfYear < 266) {
+                persianMonth = 4
+            } else if (dayOfYear < 296) {
+                persianMonth = 5
+            } else if (dayOfYear < 327) {
+                persianMonth = 6
+            } else if (dayOfYear < 357) {
+                persianMonth = 7
+            } else {
+                persianMonth = 8
+            }
+            return SHAMSI_MONTHS[persianMonth - 1]
+        }
+
         fun toPersianDigits(str: String): String {
             val sb = StringBuilder(str)
             for (i in sb.indices) {
@@ -50,25 +92,20 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             return sb.toString()
         }
 
-        fun createSmallDayIcon(dayNum: String): Bitmap {
-            val size = 120
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        fun createSmallDayIcon(label: String): Bitmap {
+            val height = 72
+            val width = 220
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
-            val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.BLACK
-                style = Paint.Style.STROKE
-                strokeWidth = 5f
-            }
-            canvas.drawCircle(size / 2f, size / 2f, size / 2f - 15f, borderPaint)
-            val textSize = size * 0.3f
             val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                typeface = Typeface.DEFAULT
                 color = Color.BLACK
-                this.textSize = textSize
+                textSize = height * 0.6f
                 textAlign = Paint.Align.CENTER
                 isFakeBoldText = true
             }
-            val yPos = size / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
-            canvas.drawText(dayNum, size / 2f, yPos, textPaint)
+            val yPos = height / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
+            canvas.drawText(label, width / 2f, yPos, textPaint)
             return bitmap
         }
 
@@ -187,7 +224,10 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         )
 
         val largeBitmap = if (dayNum.isNotEmpty()) createDayNumberBitmap(dayNum) else null
-        val smallBitmap = if (dayNum.isNotEmpty()) createSmallDayIcon(dayNum) else null
+        val parts = lastDateText.split(" ")
+        val monthName = if (parts.size >= 3) parts[parts.size - 2] else ""
+        val dayLabel = if (dayNum.isNotEmpty()) "${dayNum} ${monthName}" else ""
+        val smallBitmap = if (dayLabel.isNotEmpty()) createSmallDayIcon(dayLabel) else null
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(titleText)
@@ -249,7 +289,8 @@ class StatusBarService : Service() {
             val dayNum = cal.get(java.util.Calendar.DAY_OF_MONTH)
             dayNum.toString()
         }
-        val defaultSmallBitmap = StatusBarModule.createSmallDayIcon(todayDay)
+        val defaultLabel = "${todayDay} ${getDefaultMonthName()}"
+        val defaultSmallBitmap = StatusBarModule.createSmallDayIcon(defaultLabel)
         return NotificationCompat.Builder(this, channelId)
             .setSmallIcon(IconCompat.createWithBitmap(defaultSmallBitmap))
             .setContentTitle("حسابدار من")
