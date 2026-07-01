@@ -93,14 +93,14 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         }
 
         fun createSmallDayIcon(label: String): Bitmap {
-            val height = 72
-            val width = 220
+            val height = 160
+            val width = 450
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                typeface = Typeface.DEFAULT
+                typeface = Typeface.DEFAULT_BOLD
                 color = Color.BLACK
-                textSize = height * 0.6f
+                textSize = height * 0.55f
                 textAlign = Paint.Align.CENTER
                 isFakeBoldText = true
             }
