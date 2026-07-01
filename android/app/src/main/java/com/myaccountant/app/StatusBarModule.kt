@@ -120,6 +120,69 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         stopService(context)
     }
 
+    private fun createCombinedIcon(dayNum: String, dateText: String, income: String, expense: String): Bitmap? {
+        if (dayNum.isEmpty()) return null
+        val circleDimen = 120
+        val infoWidth = 400
+        val totalWidth = circleDimen + infoWidth
+        val height = circleDimen
+        val bitmap = Bitmap.createBitmap(totalWidth, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.WHITE)
+
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#111827")
+            style = Paint.Style.FILL
+        }
+        canvas.drawCircle(circleDimen / 2f, height / 2f, circleDimen / 2f - 6f, bgPaint)
+
+        val dayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 48f
+            textAlign = Paint.Align.CENTER
+            isFakeBoldText = true
+        }
+        val dayY = height / 2f - 6f
+        canvas.drawText(dayNum, circleDimen / 2f, dayY, dayPaint)
+
+        val monthWords = dateText.split(" ")
+        val monthName = if (monthWords.size >= 2) monthWords[1] else ""
+        val monthPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 18f
+            textAlign = Paint.Align.CENTER
+        }
+        val monthY = height / 2f + 26f
+        canvas.drawText(monthName, circleDimen / 2f, monthY, monthPaint)
+
+        val rightX = totalWidth - 20f
+
+        val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#1f2937")
+            textSize = 22f
+            isFakeBoldText = true
+        }
+        canvas.drawText(toPersianDigits(dateText), rightX - datePaint.measureText(toPersianDigits(dateText)), 38f, datePaint)
+
+        val incomePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#059669")
+            textSize = 20f
+            isFakeBoldText = true
+        }
+        val incomeLine = "\uD83D\uDCC8 دریافتی: ${toPersianDigits(income)} تومان"
+        canvas.drawText(incomeLine, rightX - incomePaint.measureText(incomeLine), 68f, incomePaint)
+
+        val expensePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#dc2626")
+            textSize = 20f
+            isFakeBoldText = true
+        }
+        val expenseLine = "\uD83D\uDCC9 پرداختی: ${toPersianDigits(expense)} تومان"
+        canvas.drawText(expenseLine, rightX - expensePaint.measureText(expenseLine), 98f, expensePaint)
+
+        return bitmap
+    }
+
     private fun updateNotification(dayNum: String = "") {
         val context = currentActivity ?: return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -158,6 +221,7 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         )
 
         val smallBitmap = if (dayNum.isNotEmpty()) createSmallDayIcon(dayNum) else null
+        val combinedBitmap = createCombinedIcon(dayNum, lastDateText, lastIncome, lastExpense)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(titleText)
@@ -171,6 +235,9 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             builder.setSmallIcon(IconCompat.createWithBitmap(smallBitmap))
         } else {
             builder.setSmallIcon(android.R.drawable.ic_popup_reminder)
+        }
+        if (combinedBitmap != null) {
+            builder.setLargeIcon(combinedBitmap)
         }
         val notification = builder.build()
         try {
