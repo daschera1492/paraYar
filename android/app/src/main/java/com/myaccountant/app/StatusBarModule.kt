@@ -289,7 +289,7 @@ class StatusBarService : Service() {
             val dayNum = cal.get(java.util.Calendar.DAY_OF_MONTH)
             dayNum.toString()
         }
-        val defaultLabel = "${todayDay} ${getDefaultMonthName()}"
+        val defaultLabel = "${todayDay} ${StatusBarModule.getDefaultMonthName()}"
         val defaultSmallBitmap = StatusBarModule.createSmallDayIcon(defaultLabel)
         return NotificationCompat.Builder(this, channelId)
             .setSmallIcon(IconCompat.createWithBitmap(defaultSmallBitmap))
