@@ -51,16 +51,16 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         }
 
         fun createSmallDayIcon(dayNum: String): Bitmap {
-            val size = 96
+            val size = 120
             val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.BLACK
                 style = Paint.Style.STROKE
-                strokeWidth = 4f
+                strokeWidth = 5f
             }
-            canvas.drawCircle(size / 2f, size / 2f, size / 2f - 8f, borderPaint)
-            val textSize = size * 0.55f
+            canvas.drawCircle(size / 2f, size / 2f, size / 2f - 15f, borderPaint)
+            val textSize = size * 0.3f
             val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.BLACK
                 this.textSize = textSize
