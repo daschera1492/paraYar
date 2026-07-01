@@ -59,8 +59,8 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
                 style = Paint.Style.STROKE
                 strokeWidth = 4f
             }
-            canvas.drawCircle(size / 2f, size / 2f, size / 2f - 4f, borderPaint)
-            val textSize = size * 0.7f
+            canvas.drawCircle(size / 2f, size / 2f, size / 2f - 8f, borderPaint)
+            val textSize = size * 0.55f
             val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.BLACK
                 this.textSize = textSize
@@ -120,66 +120,32 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         stopService(context)
     }
 
-    private fun createCombinedIcon(dayNum: String, dateText: String, income: String, expense: String): Bitmap? {
-        if (dayNum.isEmpty()) return null
-        val circleDimen = 120
-        val infoWidth = 400
-        val totalWidth = circleDimen + infoWidth
-        val height = circleDimen
-        val bitmap = Bitmap.createBitmap(totalWidth, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        canvas.drawColor(Color.WHITE)
+    private fun rtlLine(text: String): String {
+        val rlm = "\u200F"
+        val rle = "\u202B"
+        val pdf = "\u202C"
+        return "$rle${rlm}$text$pdf"
+    }
 
+    private fun createDayNumberBitmap(dayNum: String): Bitmap? {
+        if (dayNum.isEmpty()) return null
+        val size = 120
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
         val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#111827")
+            color = Color.parseColor("#4f46e5")
             style = Paint.Style.FILL
         }
-        canvas.drawCircle(circleDimen / 2f, height / 2f, circleDimen / 2f - 6f, bgPaint)
-
-        val dayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, bgPaint)
+        val textSize = size * 0.5f
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            textSize = 48f
+            this.textSize = textSize
             textAlign = Paint.Align.CENTER
             isFakeBoldText = true
         }
-        val dayY = height / 2f - 6f
-        canvas.drawText(dayNum, circleDimen / 2f, dayY, dayPaint)
-
-        val monthWords = dateText.split(" ")
-        val monthName = if (monthWords.size >= 2) monthWords[1] else ""
-        val monthPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            textSize = 18f
-            textAlign = Paint.Align.CENTER
-        }
-        val monthY = height / 2f + 26f
-        canvas.drawText(monthName, circleDimen / 2f, monthY, monthPaint)
-
-        val rightX = totalWidth - 20f
-
-        val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#1f2937")
-            textSize = 22f
-            isFakeBoldText = true
-        }
-        canvas.drawText(toPersianDigits(dateText), rightX - datePaint.measureText(toPersianDigits(dateText)), 38f, datePaint)
-
-        val incomePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#059669")
-            textSize = 20f
-            isFakeBoldText = true
-        }
-        val incomeLine = "\uD83D\uDCC8 دریافتی: ${toPersianDigits(income)} تومان"
-        canvas.drawText(incomeLine, rightX - incomePaint.measureText(incomeLine), 68f, incomePaint)
-
-        val expensePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#dc2626")
-            textSize = 20f
-            isFakeBoldText = true
-        }
-        val expenseLine = "\uD83D\uDCC9 پرداختی: ${toPersianDigits(expense)} تومان"
-        canvas.drawText(expenseLine, rightX - expensePaint.measureText(expenseLine), 98f, expensePaint)
-
+        val yPos = size / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
+        canvas.drawText(toPersianDigits(dayNum), size / 2f, yPos, textPaint)
         return bitmap
     }
 
@@ -193,24 +159,24 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         val expensePersian = toPersianDigits(lastExpense)
 
         val contentText = buildString {
-            append("\uD83D\uDCC5 $datePersian")
+            append(rtlLine("\uD83D\uDCC5 $datePersian"))
             append("\n")
-            append("\uD83D\uDCC8 دریافتی: $incomePersian تومان")
+            append(rtlLine("\uD83D\uDCC8 دریافتی: $incomePersian تومان"))
             append("\n")
-            append("\uD83D\uDCC9 پرداختی: $expensePersian تومان")
+            append(rtlLine("\uD83D\uDCC9 پرداختی: $expensePersian تومان"))
             if (lastReminders.isNotEmpty()) {
                 append("\n\n")
-                append("\uD83D\uDD14 یادآورها:")
+                append(rtlLine("\uD83D\uDD14 یادآورها:"))
                 for (rem in lastReminders) {
                     val remPersian = toPersianDigits(rem)
                     append("\n")
-                    append(remPersian)
+                    append(rtlLine(remPersian))
                 }
             }
         }
 
-        val titleText = "\uD83D\uDCCA $datePersian"
-        val summaryText = "دریافتی: $incomePersian | پرداختی: $expensePersian"
+        val titleText = rtlLine("\uD83D\uDCCA $datePersian")
+        val summaryText = rtlLine("دریافتی: $incomePersian | پرداختی: $expensePersian")
 
         val openIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -220,8 +186,8 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val largeBitmap = if (dayNum.isNotEmpty()) createDayNumberBitmap(dayNum) else null
         val smallBitmap = if (dayNum.isNotEmpty()) createSmallDayIcon(dayNum) else null
-        val combinedBitmap = createCombinedIcon(dayNum, lastDateText, lastIncome, lastExpense)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(titleText)
@@ -236,8 +202,8 @@ class StatusBarModule(reactContext: ReactApplicationContext) :
         } else {
             builder.setSmallIcon(android.R.drawable.ic_popup_reminder)
         }
-        if (combinedBitmap != null) {
-            builder.setLargeIcon(combinedBitmap)
+        if (largeBitmap != null) {
+            builder.setLargeIcon(largeBitmap)
         }
         val notification = builder.build()
         try {
