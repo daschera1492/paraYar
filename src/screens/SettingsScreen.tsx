@@ -8,7 +8,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Feather } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
 import {
-  TransactionType, ParentCategoryType, Category, PARENT_CATEGORIES, COLOR_OPTIONS, CATEGORY_ICONS,
+  TransactionType, ParentCategoryType, Category, ParentCategory, COLOR_OPTIONS, CATEGORY_ICONS,
   GOAL_ICONS, DEBT_ICONS,   StatusBarConfig, DEFAULT_STATUS_BAR_CONFIG, BACKUP_INTERVALS, DEFAULT_DRIVE_BACKUP,
 } from '../types';
 import { formatCurrency, calculateGoalProgress, generateId, getShamsiNow, SHAMSI_MONTH_NAMES, formatShamsiDateParts, gregorianToShamsi } from '../utils';
@@ -34,7 +34,7 @@ const iconMap: Record<string, any> = {
   'user-plus': 'user-plus', 'help-circle': 'help-circle', save: 'save',
 };
 
-type SettingTab = 'profile' | 'budgets' | 'categories' | 'backup' | 'goals' | 'debts' | 'security' | 'statusbar';
+type SettingTab = 'profile' | 'budgets' | 'categories' | 'backup' | 'goals' | 'debts' | 'security' | 'reminders' | 'statusbar';
 
 interface SettingsScreenProps {
   onNavigateTo?: (view: string) => void;
@@ -44,6 +44,7 @@ interface SettingsScreenProps {
 export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScreenProps) {
   const {
     budgets, setCategoryBudget, categories, addCategory, updateCategory, deleteCategory,
+    parentCategories, addParentCategory, updateParentCategory, deleteParentCategory,
     userProfile, updateUserProfile, getBackupData, importBackup,
     transactions, reminders,
     savingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, contributeToGoal,
@@ -68,6 +69,10 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
   const [driveUploading, setDriveUploading] = useState(false);
   const [driveStatus, setDriveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const [isAddingParentCat, setIsAddingParentCat] = useState(false);
+  const [editingParentCatId, setEditingParentCatId] = useState<string | null>(null);
+  const [parentCatName, setParentCatName] = useState('');
+  const [parentCatColor, setParentCatColor] = useState(COLOR_OPTIONS[3]);
   const [isAddingCat, setIsAddingCat] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [newCatName, setNewCatName] = useState('');
@@ -343,7 +348,7 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
       <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>تعیین سقف هزینه برای دسته‌های اصلی و زیرمجموعه‌ها.</Text>
       <View style={{ gap: 12 }}>
         <Text style={styles.budgetSectionTitle}>دسته‌های اصلی</Text>
-        {PARENT_CATEGORIES.map(pc => {
+        {parentCategories.map(pc => {
           const isEditing = editingId === pc.id;
           const currentBudget = budgets[pc.id] || 0;
           return (
@@ -411,8 +416,57 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
     </View>
   );
 
+  const resetParentCatForm = () => {
+    setIsAddingParentCat(false);
+    setEditingParentCatId(null);
+    setParentCatName('');
+    setParentCatColor(COLOR_OPTIONS[3]);
+  };
+
+  const handleSaveParentCat = () => {
+    if (!parentCatName.trim()) return;
+    const data = { name: parentCatName.trim(), color: parentCatColor };
+    if (editingParentCatId) {
+      updateParentCategory(editingParentCatId, data);
+    } else {
+      addParentCategory(data);
+    }
+    resetParentCatForm();
+  };
+
   const renderCategoriesTab = () => (
     <View style={{ gap: 16 }}>
+      <View style={styles.secCard}>
+        <View style={styles.sectionRow}>
+          <Text style={[styles.secTitle, { marginBottom: 0 }]}>دسته‌های اصلی</Text>
+          <TouchableOpacity style={styles.smallAddBtn} onPress={() => {
+            resetParentCatForm();
+            setIsAddingParentCat(true);
+          }}>
+            <Feather name="plus" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        {parentCategories.map(pc => (
+          <View key={pc.id} style={styles.catItem}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={[styles.budgetDot, { backgroundColor: pc.color }]} />
+              <Text style={styles.catItemName}>{pc.name}</Text>
+            </View>
+            <TouchableOpacity onPress={() => {
+              setEditingParentCatId(pc.id);
+              setParentCatName(pc.name);
+              setParentCatColor(pc.color);
+              setIsAddingParentCat(true);
+            }} style={{ padding: 8 }}>
+              <Feather name="edit" size={16} color="#6b7280" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => deleteParentCategory(pc.id)} style={{ padding: 8 }}>
+              <Feather name="trash-2" size={18} color="#f43f5e" />
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
+
       <View style={styles.catTypeToggle}>
         <TouchableOpacity style={[styles.catTypeBtn, catType === 'expense' && styles.catTypeBtnExpense]}
           onPress={() => setCatType('expense')}>
@@ -1005,8 +1059,48 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
       </ScrollView>
 
       {isAddingCat && renderAddCategoryModal()}
+      {isAddingParentCat && renderAddParentCatModal()}
     </View>
   );
+
+  function renderAddParentCatModal() {
+    const isEditing = editingParentCatId !== null;
+    return (
+      <Modal visible={isAddingParentCat} transparent animationType="slide">
+        <View style={styles.addCatOverlay}>
+          <View style={styles.addCatHeader}>
+            <Text style={{ fontSize: 18, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937' }}>
+              {isEditing ? 'ویرایش دسته اصلی' : 'دسته اصلی جدید'}
+            </Text>
+            <TouchableOpacity onPress={() => { setIsAddingParentCat(false); setEditingParentCatId(null); setParentCatName(''); }}>
+              <Feather name="x" size={24} color="#6b7280" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24, gap: 24, paddingBottom: 120 }}>
+            <View>
+              <Text style={styles.fieldLabel}>نام دسته اصلی</Text>
+              <TextInput style={styles.fieldInput} value={parentCatName} onChangeText={setParentCatName} placeholder="مثلاً: هزینه‌های مسکن" />
+            </View>
+            <View style={{ gap: 8 }}>
+              <Text style={styles.fieldLabel}>رنگ</Text>
+              <View style={styles.colorGrid}>
+                {COLOR_OPTIONS.map(c => (
+                  <TouchableOpacity key={c} style={[styles.colorOption, { backgroundColor: c }, parentCatColor === c && styles.colorActive]}
+                    onPress={() => setParentCatColor(c)} />
+                ))}
+              </View>
+            </View>
+          </ScrollView>
+          <View style={styles.modalFooter}>
+            <TouchableOpacity style={[styles.saveBtn, !parentCatName.trim() && styles.saveBtnDisabled]}
+              onPress={handleSaveParentCat} disabled={!parentCatName.trim()}>
+              <Text style={styles.saveBtnText}>{isEditing ? 'ویرایش' : 'افزودن'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   function renderAddCategoryModal() {
     const isEditing = editingCatId !== null;
@@ -1029,7 +1123,7 @@ export default function SettingsScreen({ onNavigateTo, initialTab }: SettingsScr
             {catType === 'expense' && (
               <View style={{ gap: 12 }}>
                 <Text style={styles.fieldLabel}>دسته اصلی</Text>
-                {PARENT_CATEGORIES.map(pc => (
+                {parentCategories.map(pc => (
                   <TouchableOpacity key={pc.id} style={[styles.parentSelect, newCatParent === pc.id && styles.parentSelectActive]}
                     onPress={() => setNewCatParent(pc.id)}>
                     <Text style={[styles.parentSelectText, newCatParent === pc.id && { color: '#1d4ed8', fontFamily: 'Vazirmatn_700Bold' }]}>{pc.name}</Text>
@@ -1194,6 +1288,7 @@ const styles = StyleSheet.create({
   modalBody: { padding: 24, gap: 20, paddingBottom: 120 },
   modalFooter: { position: 'absolute', bottom: 0, width: '100%', padding: 24, paddingBottom: 32 },
   saveBtn: { backgroundColor: '#111827', borderRadius: 24, paddingVertical: 16, alignItems: 'center' },
+  saveBtnDisabled: { opacity: 0.4 },
   saveBtnText: { color: '#fff', fontFamily: 'Vazirmatn_700Bold', fontSize: 16 },
 
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },

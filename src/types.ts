@@ -1,5 +1,5 @@
 export type TransactionType = 'income' | 'expense';
-export type ParentCategoryType = 'loans_installments' | 'savings_investments' | 'essentials';
+export type ParentCategoryType = string;
 export type ReminderType = 'monthly' | 'onetime';
 export type AccountType = 'bank' | 'cash' | 'card' | 'wallet' | 'savings';
 export type DebtType = 'loan' | 'debt';
@@ -15,6 +15,8 @@ export const PARENT_CATEGORIES: ParentCategory[] = [
   { id: 'savings_investments', name: 'پس‌انداز و سرمایه', color: '#10b981' },
   { id: 'essentials', name: 'هزینه‌های جاری', color: '#3b82f6' }
 ];
+
+export const DEFAULT_PARENT_CATEGORIES = PARENT_CATEGORIES;
 
 export interface Account {
   id: string;
@@ -150,6 +152,7 @@ export interface BackupData {
   transactions: Transaction[];
   budgets: Record<string, number>;
   categories: Category[];
+  parentCategories: ParentCategory[];
   reminders: Reminder[];
   userProfile: UserProfile;
   accounts: Account[];

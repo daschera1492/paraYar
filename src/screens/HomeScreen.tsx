@@ -6,7 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, formatDate, getPersianDate, isSameDay, generateLast14Days,
   gregorianToShamsi, SHAMSI_MONTH_NAMES, calculateGoalProgress, formatShamsiDate } from '../utils';
-import { PARENT_CATEGORIES, Reminder, SavingsGoal } from '../types';
+import { Reminder, SavingsGoal } from '../types';
 import ShamsiDatePicker from '../components/ShamsiDatePicker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -29,6 +29,7 @@ export default function HomeScreen({ onEdit, onToggleDrawer }: HomeScreenProps) 
     totalBalance, monthlyIncome, monthlyExpense, transactions, budgets,
     deleteTransaction, setEditingTransactionId, categories, userProfile,
     reminders, accounts, getAccountBalance, savingsGoals, completeReminder, isReminderDue,
+    parentCategories,
   } = useFinance();
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -73,7 +74,7 @@ export default function HomeScreen({ onEdit, onToggleDrawer }: HomeScreenProps) 
     Object.entries(budgets).forEach(([catId, rawLimit]) => {
       const limit = Number(rawLimit);
       if (limit <= 0) return;
-      const parentCat = PARENT_CATEGORIES.find(p => p.id === catId);
+      const parentCat = parentCategories.find(p => p.id === catId);
       if (parentCat) {
         const spent = parentExpenses[catId] || 0;
         items.push({ id: catId, name: parentCat.name, spent, limit, percentage: (spent / limit) * 100, color: parentCat.color });
@@ -126,7 +127,7 @@ export default function HomeScreen({ onEdit, onToggleDrawer }: HomeScreenProps) 
 
   const budgetTransactions = useMemo(() => {
     if (!budgetDetail) return [];
-    const isParent = PARENT_CATEGORIES.some(p => p.id === budgetDetail.id);
+    const isParent = parentCategories.some(p => p.id === budgetDetail.id);
     return transactions.filter(tx => {
       const d = new Date(tx.date);
       const s = gregorianToShamsi(d.getFullYear(), d.getMonth() + 1, d.getDate());
@@ -143,7 +144,7 @@ export default function HomeScreen({ onEdit, onToggleDrawer }: HomeScreenProps) 
     return accounts.map(a => ({
       ...a,
       balance: getAccountBalance(a.id),
-    }));
+    })).sort((a, b) => b.balance - a.balance);
   }, [accounts, getAccountBalance]);
 
   const activeGoals = savingsGoals.filter(g => g.currentAmount < g.targetAmount);

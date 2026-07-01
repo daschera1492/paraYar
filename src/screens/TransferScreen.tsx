@@ -54,24 +54,23 @@ export default function TransferScreen({ onClose }: TransferScreenProps) {
       </View>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-        <View style={styles.transferIllustration}>
-          <View style={styles.arrowCircle}>
-            <Feather name="repeat" size={32} color="#2563eb" />
+        <View style={styles.accountRow}>
+          <View style={styles.accountCol}>
+            <AccountPicker label="از حساب" selectedId={fromAccountId}
+              onSelect={(id) => { setFromAccountId(id); if (toAccountId === id) setToAccountId(''); }}
+              excludeId={toAccountId || undefined} />
           </View>
-          <Text style={styles.transferDesc}>انتقال پول بین حساب‌های خود</Text>
+          <View style={styles.arrowWrap}>
+            <View style={styles.arrowCircle}>
+              <Feather name="arrow-left" size={20} color="#2563eb" />
+            </View>
+          </View>
+          <View style={styles.accountCol}>
+            <AccountPicker label="به حساب" selectedId={toAccountId}
+              onSelect={(id) => setToAccountId(id)}
+              excludeId={fromAccountId || undefined} />
+          </View>
         </View>
-
-        <AccountPicker label="از حساب" selectedId={fromAccountId}
-          onSelect={(id) => { setFromAccountId(id); if (toAccountId === id) setToAccountId(''); }}
-          excludeId={toAccountId || undefined} />
-
-        <View style={styles.arrowDown}>
-          <Feather name="arrow-down" size={24} color="#9ca3af" />
-        </View>
-
-        <AccountPicker label="به حساب" selectedId={toAccountId}
-          onSelect={(id) => setToAccountId(id)}
-          excludeId={fromAccountId || undefined} />
 
         <CurrencyInput value={amount} onChangeAmount={setAmount} label="مبلغ انتقال (تومان)"
           placeholder="0" autoFocus={false}
@@ -109,11 +108,10 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontFamily: 'Vazirmatn_700Bold', color: '#1f2937' },
   body: { flex: 1 },
   bodyContent: { padding: 24, paddingBottom: 120, gap: 24 },
-  transferIllustration: { alignItems: 'center', gap: 12, paddingVertical: 16 },
-  arrowCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
-  transferDesc: { fontSize: 14, color: '#6b7280', fontFamily: 'Vazirmatn_500Medium' },
-
-  arrowDown: { alignItems: 'center' },
+  accountRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+  accountCol: { flex: 1 },
+  arrowWrap: { width: 36, alignItems: 'center', justifyContent: 'center', paddingBottom: 4 },
+  arrowCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
   dateField: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#e5e7eb' },
   dateFieldText: { flex: 1, fontSize: 16, color: '#1f2937', textAlign: 'center' },
   footer: { position: 'absolute', bottom: 0, width: '100%', padding: 24, paddingBottom: 32 },

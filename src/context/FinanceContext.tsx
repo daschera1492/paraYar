@@ -5,6 +5,7 @@ import {
   Transaction, Reminder, Category, UserProfile, BackupData, DEFAULT_CATEGORIES,
   Account, RecurringTransaction, SavingsGoal, Debt, AppLock, DEFAULT_ACCOUNTS,
   StatusBarConfig, DEFAULT_STATUS_BAR_CONFIG, DriveBackupConfig, DEFAULT_DRIVE_BACKUP,
+  ParentCategory, PARENT_CATEGORIES, DEFAULT_PARENT_CATEGORIES,
 } from '../types';
 import { generateId, gregorianToShamsi, SHAMSI_MONTH_NAMES, formatCurrency } from '../utils';
 import { updateStatusBar, startStatusBarService, stopStatusBarService } from '../services/StatusBarService';
@@ -19,6 +20,10 @@ interface FinanceContextType {
   addCategory: (category: Omit<Category, 'id'>) => void;
   updateCategory: (id: string, category: Omit<Category, 'id'>) => void;
   deleteCategory: (id: string) => void;
+  parentCategories: ParentCategory[];
+  addParentCategory: (pc: Omit<ParentCategory, 'id'>) => void;
+  updateParentCategory: (id: string, pc: Omit<ParentCategory, 'id'>) => void;
+  deleteParentCategory: (id: string) => void;
   userProfile: UserProfile;
   updateUserProfile: (profile: UserProfile) => void;
   totalBalance: number;
@@ -89,6 +94,7 @@ const KEYS = {
   lock: '@finance/lock',
   statusBar: '@finance/statusBar',
   driveBackup: '@finance/driveBackup',
+  parentCats: '@finance/parentCats',
 } as const;
 
 const DEFAULT_PROFILE: UserProfile = { name: 'کاربر', phone: '', email: '' };
@@ -113,6 +119,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [appLock, setAppLockState] = useState<AppLock>(DEFAULT_LOCK);
   const [statusBarConfig, setStatusBarConfigState] = useState<StatusBarConfig>(DEFAULT_STATUS_BAR_CONFIG);
   const [driveBackup, setDriveBackupState] = useState<DriveBackupConfig>(DEFAULT_DRIVE_BACKUP);
+  const [parentCategories, setParentCategories] = useState<ParentCategory[]>(PARENT_CATEGORIES);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -120,7 +127,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       try {
         const [
           txData, catData, budData, remData, profData,
-          accData, recData, goalData, debtData, lockData, sbData, dbData,
+          accData, recData, goalData, debtData, lockData, sbData, dbData, pcData,
         ] = await Promise.all([
           AsyncStorage.getItem(KEYS.transactions),
           AsyncStorage.getItem(KEYS.categories),
@@ -134,6 +141,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           AsyncStorage.getItem(KEYS.lock),
           AsyncStorage.getItem(KEYS.statusBar),
           AsyncStorage.getItem(KEYS.driveBackup),
+          AsyncStorage.getItem(KEYS.parentCats),
         ]);
         if (txData) {
           let txs: Transaction[] = JSON.parse(txData);
@@ -157,6 +165,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         if (lockData) setAppLockState(JSON.parse(lockData));
         if (sbData) setStatusBarConfigState(JSON.parse(sbData));
         if (dbData) setDriveBackupState({ ...DEFAULT_DRIVE_BACKUP, ...JSON.parse(dbData) });
+        if (pcData) setParentCategories(JSON.parse(pcData));
       } catch {}
       setIsLoaded(true);
     })();
@@ -178,6 +187,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => { if (isLoaded) persist(KEYS.lock, appLock); }, [appLock, isLoaded]);
   useEffect(() => { if (isLoaded) persist(KEYS.statusBar, statusBarConfig); }, [statusBarConfig, isLoaded]);
   useEffect(() => { if (isLoaded) persist(KEYS.driveBackup, driveBackup); }, [driveBackup, isLoaded]);
+  useEffect(() => { if (isLoaded) persist(KEYS.parentCats, parentCategories); }, [parentCategories, isLoaded]);
 
   useEffect(() => {
     if (!isLoaded || Platform.OS !== 'android') return;
@@ -276,6 +286,18 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const updateCategory = useCallback((id: string, cat: Omit<Category, 'id'>) => {
     setCategories(prev => prev.map(c => c.id === id ? { ...cat, id } : c));
+  }, []);
+
+  const addParentCategory = useCallback((pc: Omit<ParentCategory, 'id'>) => {
+    setParentCategories(prev => [...prev, { ...pc, id: generateId() }]);
+  }, []);
+
+  const updateParentCategory = useCallback((id: string, pc: Omit<ParentCategory, 'id'>) => {
+    setParentCategories(prev => prev.map(x => x.id === id ? { ...pc, id } : x));
+  }, []);
+
+  const deleteParentCategory = useCallback((id: string) => {
+    setParentCategories(prev => prev.filter(x => x.id !== id));
   }, []);
 
   const updateUserProfile = useCallback((profile: UserProfile) => {
@@ -480,12 +502,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const getBackupData = useCallback((): BackupData => {
     return {
-      transactions, budgets, categories, reminders, userProfile,
+      transactions, budgets, categories, parentCategories, reminders, userProfile,
       accounts, recurringTransactions, savingsGoals, debts, appLock, statusBarConfig,
       driveBackup,
       exportedAt: new Date().toISOString()
     };
-  }, [transactions, budgets, categories, reminders, userProfile, accounts, recurringTransactions, savingsGoals, debts, appLock, statusBarConfig, driveBackup]);
+  }, [transactions, budgets, categories, parentCategories, reminders, userProfile, accounts, recurringTransactions, savingsGoals, debts, appLock, statusBarConfig, driveBackup]);
 
   const validateArray = (arr: any, checkFields: string[]): boolean => {
     if (!Array.isArray(arr)) return false;
@@ -518,6 +540,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         setAppLockState(data.appLock);
       if (data.statusBarConfig && typeof data.statusBarConfig === 'object' && 'enabled' in data.statusBarConfig)
         setStatusBarConfigState(data.statusBarConfig);
+      if (data.parentCategories && validateArray(data.parentCategories, ['id', 'name', 'color']))
+        setParentCategories(data.parentCategories);
       return true;
     } catch { return false; }
   }, []);
@@ -528,6 +552,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     totalBalance, monthlyIncome, monthlyExpense,
     budgets, setCategoryBudget,
     categories, addCategory, updateCategory, deleteCategory,
+    parentCategories, addParentCategory, updateParentCategory, deleteParentCategory,
     userProfile, updateUserProfile,
     reminders, addReminder, updateReminder, deleteReminder, toggleReminder, completeReminder, isReminderDue,
     editingTransactionId, setEditingTransactionId,
